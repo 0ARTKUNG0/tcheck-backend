@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
+const userRouter = require("./router/user.router");
 
 dotenv.config();
 
@@ -32,6 +33,8 @@ app.use(cookieParser());
 app.get("/", (req, res) => {
     res.send("Hello World!");
 });
+
+app.use("/api/user", userRouter);
 
 if(!MONGODB_URL){
     console.error("MongoDB URL is missing. Please set it in your .env file.");
