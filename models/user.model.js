@@ -29,11 +29,10 @@ const userSchema = new Schema({
     {timestamps: true}
 );
 
-userSchema.pre("save", function (next) {
+userSchema.pre("save", function () {
     if (this.user_role === "admin") {
         this.user_tier = null;
     }
-    next();
 });
 
 const User = model("User", userSchema);

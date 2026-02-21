@@ -2,3 +2,4 @@
 /node_modules
 *claude.md
 *.yaml
+*.postman_collection.json
