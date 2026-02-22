@@ -79,6 +79,17 @@ const signOut = async (req, res) => {
         return res.status(500).json({message: "Internal server error"});
     }
 } 
+//get user profile
+const getUserProfile = async (req, res) => {
+    try{
+        // The user is already populated in req.user by the middleware
+        return res.status(200).json({ user: req.user });
+    } catch(error){
+        console.log(error);
+        return res.status(500).json({message: "Internal server error"});
+    }
+}
+
 //update User username
 const updateUsername = async (req, res) => {
     const {user_name} = req.body;
@@ -86,7 +97,7 @@ const updateUsername = async (req, res) => {
         return res.status(400).json({message: "Username is required"});
     }
     try{
-        const user = await User.findById(req.user.user_id);
+        const user = await User.findById(req.user._id);
         if(!user){
             return res.status(401).json({message: "User not found"});
         }
@@ -103,5 +114,6 @@ module.exports = {
     SignUp,
     SignIn,
     signOut,
+    getUserProfile,
     updateUsername
 }

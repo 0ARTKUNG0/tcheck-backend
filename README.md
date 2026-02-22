@@ -44,14 +44,45 @@ REST API backend for tcheck built with Node.js, Express 5, and MongoDB.
 
 Base URL: `/api`
 
+### Public Endpoints
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/user/signup` | Register a new user |
 | POST | `/api/user/signin` | Sign in |
 | POST | `/api/user/signout` | Sign out (clears cookie) |
-| POST | `/api/user/update-username` | Update username (requires auth) |
+
+### Protected Endpoints (Requires Authentication)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/user/profile` | Get current user profile |
+| POST | `/api/user/update-username` | Update username |
+
+### Admin Endpoints (Requires Admin Role)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/user/admin/users` | Get all users (admin only) |
+| PUT | `/api/user/admin/update-role` | Update user role (admin only) |
 
 See [swagger.yaml](swagger.yaml) for full API documentation.
+
+## Authentication & Authorization
+
+The application uses JWT-based authentication with httpOnly cookies.
+
+### Middleware
+
+- **verifyToken**: Validates JWT token from cookies or Authorization header
+- **isAdmin**: Restricts access to admin users only
+- **hasRole**: Restricts access based on specified roles
+
+### Token Format
+
+Tokens can be provided via:
+1. Cookie: `req.cookies.token`
+2. Authorization Header: `Bearer <token>`
 
 ## Tech Stack
 
