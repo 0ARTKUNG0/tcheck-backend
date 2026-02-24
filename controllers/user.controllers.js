@@ -24,8 +24,9 @@ const SignUp = async (req, res) => {
                 user_name,
                 user_email,
                 user_password: hashPassword,
-                user_role: user_role || "user",
-                user_tier: user_tier || "user-free"
+                //force user to role to be user because admin will be created by only admin edit in database
+                user_role: "user",
+                user_tier: "user-free"
             });
             const token = jwt.sign({user_id: user._id}, JWT_SECRET, {expiresIn: "1h"});
             res.cookie("token", token, {

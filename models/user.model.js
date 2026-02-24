@@ -29,11 +29,5 @@ const userSchema = new Schema({
     {timestamps: true}
 );
 
-userSchema.pre("save", function () {
-    if (this.user_role === "admin") {
-        this.user_tier = null;
-    }
-});
-
 const User = model("User", userSchema);
 module.exports = User;
