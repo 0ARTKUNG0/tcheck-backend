@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const {Schema, model} = mongoose;
+const { Schema, model } = mongoose;
 
 const userSchema = new Schema({
     user_name: {
@@ -17,16 +17,11 @@ const userSchema = new Schema({
     },
     user_role: {
         type: String,
-        enum: ["admin", "user"],
-        default: "user"
-    },
-    user_tier: {
-        type: String,
-        enum: ["user-free", "user-pro", null],
+        enum: ["user-free", "user-pro", "admin"],
         default: "user-free"
-    },
-}, 
-    {timestamps: true}
+    }
+},
+    { timestamps: true }
 );
 
 const User = model("User", userSchema);
