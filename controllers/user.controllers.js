@@ -36,7 +36,7 @@ const SignUp = async (req, res) => {
                 maxAge: 60 * 60 * 1000
             });
             await user.save();
-            return res.status(201).json({message: "User created successfully", user});
+            return res.status(201).json({message: "User created successfully"});
     } catch(error){
         console.log(error);
         return res.status(500).json({message: "Internal server error"});
@@ -44,12 +44,12 @@ const SignUp = async (req, res) => {
 }
 
 const SignIn = async (req, res) => {
-    const {user_email, user_password} = req.body;
-    if(!user_email || !user_password){
+    const {user_name, user_email, user_password} = req.body;
+    if((!user_email && !user_name) || !user_password){
         return res.status(400).json({message: "All fields are required"});
     }
     try{
-        const user = await User.findOne({user_email});
+        const user = await User.findOne(user_email ? {user_email} : {user_name});
         if(!user){
             return res.status(401).json({message: "User not found"});
         }
@@ -64,7 +64,7 @@ const SignIn = async (req, res) => {
             sameSite: "strict",
             maxAge: 60 * 60 * 1000
         });
-        return res.status(200).json({message: "User signed in successfully", user});
+        return res.status(200).json({message: "User signed in successfully"});
     } catch(error){
         console.log(error);
         return res.status(500).json({message: "Internal server error"});
@@ -93,7 +93,7 @@ const updateUsername = async (req, res) => {
         }
         user.user_name = user_name;
         await user.save();
-        return res.status(200).json({message: "Username updated successfully", user});
+        return res.status(200).json({message: "Username updated successfully", user_name});
     } catch(error){
         console.log(error);
         return res.status(500).json({message: "Internal server error"});
