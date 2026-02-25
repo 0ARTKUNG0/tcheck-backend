@@ -30,7 +30,7 @@ const SignUp = async (req, res) => {
             await user.save();
             return res.status(201).json({message: "User created successfully"});
     } catch(error){
-        // Handle duplicate email error (E11000)
+        // Handle duplicate email error (where this error code come from 11000 is a mongoose error code that when a unique index is duplicate it will throw this error)
         if (error.code === 11000) {
             return res.status(409).json({ message: "Email already exists" });
         }
