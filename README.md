@@ -62,13 +62,6 @@ Base URL: `/api`
 | GET | `/api/user/profile` | Get current user profile | - |
 | POST | `/api/user/update-username` | Update username | `{ user_name }` |
 
-### Admin Endpoints (Requires Admin Role)
-
-| Method | Endpoint | Description | Request Body |
-|--------|----------|-------------|--------------|
-| GET | `/api/user/admin/users` | Get all users (admin only) | - |
-| PUT | `/api/user/admin/update-role` | Update user role (admin only) | `{ user_id, user_role }` |
-
 ## User Roles
 
 The system supports three user roles:
