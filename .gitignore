@@ -4,3 +4,4 @@
 *.yaml
 *.postman_collection.json
 package-lock.json
+postman

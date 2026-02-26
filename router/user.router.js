@@ -11,5 +11,7 @@ router.post("/signin", userController.SignIn);
 router.post("/signout", userController.signOut);
 //POST /api/user/update-username - แก้ไขชื่อผู้ใช้
 router.post("/update-username", verifyToken, userController.updateUsername);
+//GET /api/user/profile - ดูโปรไฟล์ผู้ใช้
+router.get("/profile", verifyToken, userController.getUserProfile);
 
 module.exports = router;
