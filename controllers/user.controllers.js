@@ -101,6 +101,15 @@ const updateUsername = async (req, res) => {
             return res.status(401).json({message: "User not found"});
         }
         user.user_name = user_name;
+        //update token
+        const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            //3 hours
+            maxAge: 60 * 60 * 1000 * 3
+        });
         await user.save();
         return res.status(200).json({message: "Username updated successfully", user_name});
     } catch(error){
