@@ -20,7 +20,7 @@ const SignUp = async (req, res) => {
                 user_email,
                 user_password: hashPassword
             });
-            const token = jwt.sign({user_id: user._id,user_email: user.user_email}, JWT_SECRET, {expiresIn: "1h"});
+            const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
             res.cookie("token", token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
@@ -54,7 +54,7 @@ const SignIn = async (req, res) => {
         if(!isPasswordMatch){
             return res.status(401).json({message: "Invalid password"});
         }
-        const token = jwt.sign({user_id: user._id,user_email: user.user_email}, JWT_SECRET, {expiresIn: "1h"});
+        const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
