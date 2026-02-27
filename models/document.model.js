@@ -18,7 +18,7 @@ const documentSchema = new Schema({
         type: String,
         required: true,
         default: "",
-        maxlength: 200000
+        maxlength: 5000
     },
     deletedAt: {
         type: Date,

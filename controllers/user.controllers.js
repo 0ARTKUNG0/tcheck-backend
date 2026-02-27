@@ -20,15 +20,16 @@ const SignUp = async (req, res) => {
                 user_email,
                 user_password: hashPassword
             });
-            const token = jwt.sign({user_id: user._id}, JWT_SECRET, {expiresIn: "1h"});
+            const token = jwt.sign({user_id: user._id,user_email: user.user_email}, JWT_SECRET, {expiresIn: "1h"});
             res.cookie("token", token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "strict",
-                maxAge: 60 * 60 * 1000
+                //3 hours
+                maxAge: 60 * 60 * 1000 * 3
             });
             await user.save();
-            return res.status(201).json({message: "User created successfully"});
+            return res.status(201).json({message: "User created successfully", user_name: user.user_name});
     } catch(error){
         // Handle duplicate email error (where this error code come from 11000 is a mongoose error code that when a unique index is duplicate it will throw this error)
         if (error.code === 11000) {
@@ -53,14 +54,15 @@ const SignIn = async (req, res) => {
         if(!isPasswordMatch){
             return res.status(401).json({message: "Invalid password"});
         }
-        const token = jwt.sign({user_id: user._id}, JWT_SECRET, {expiresIn: "1h"});
+        const token = jwt.sign({user_id: user._id,user_email: user.user_email}, JWT_SECRET, {expiresIn: "1h"});
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 60 * 60 * 1000
+            //3 hours
+            maxAge: 60 * 60 * 1000 * 3
         });
-        return res.status(200).json({message: "User signed in successfully"});
+        return res.status(200).json({message: "User signed in successfully", user_name: user.user_name});
     } catch(error){
         console.log(error);
         return res.status(500).json({message: "Internal server error"});
