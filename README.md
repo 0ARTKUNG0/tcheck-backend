@@ -104,7 +104,7 @@ The application uses JWT-based authentication with httpOnly cookies for security
 ### How It Works
 
 1. **Sign up/Sign in**: Server sets an httpOnly cookie with JWT token (1 hour expiration)
-2. **Protected routes**: Middleware verifies token from cookie
+2. **Protected routes**: Middleware verifies token from cookie or `Authorization: Bearer` header
 3. **Sign out**: Server clears the authentication cookie
 
 ### Token Details
@@ -116,7 +116,7 @@ The application uses JWT-based authentication with httpOnly cookies for security
 
 ### Middleware
 
-- **`verifyToken`**: Validates JWT token from cookies
+- **`verifyToken`**: Validates JWT token from cookies or `Authorization: Bearer` header
 - **`isAdmin`**: Restricts access to admin users only
 - **`hasRole`**: Restricts access based on specified roles
 
@@ -132,13 +132,14 @@ The application uses JWT-based authentication with httpOnly cookies for security
 
 ## Error Handling
 
-| Status Code | Meaning                                        |
-| ----------- | ---------------------------------------------- |
-| `400`       | Bad Request (missing fields)                   |
-| `401`       | Unauthorized (invalid credentials or no token) |
-| `404`       | Not Found (user not found)                     |
-| `409`       | Conflict (email already exists)                |
-| `500`       | Internal Server Error                          |
+| Status Code | Meaning                                        | Error Code         |
+| ----------- | ---------------------------------------------- | ------------------ |
+| `400`       | Bad Request (missing fields, validation error) | `VALIDATION_ERROR` |
+| `401`       | Unauthorized (invalid credentials or no token) | -                  |
+| `403`       | Forbidden (ownership or role violation)        | `FORBIDDEN`        |
+| `404`       | Not Found (resource not found)                 | `NOT_FOUND`        |
+| `409`       | Conflict (email already exists)                | -                  |
+| `500`       | Internal Server Error                          | `INTERNAL_ERROR`   |
 
 ## Testing Document Endpoints with curl
 
@@ -187,8 +188,7 @@ Import the `tcheck-backend.postman_collection.json` file into Postman to test al
 
 The collection includes:
 
-- User signup
-- User signin
-- User signout
-- Update username
+- User signup, signin, signout
+- User profile and update username
+- Document CRUD operations
 - Health check endpoint
