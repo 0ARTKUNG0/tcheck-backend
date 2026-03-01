@@ -3,3 +3,6 @@
 *claude.md
 *.yaml
 *.postman_collection.json
+package-lock.json
+postman
+.postman
