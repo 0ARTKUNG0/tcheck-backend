@@ -87,6 +87,177 @@ Base URL: `/api`
 - Users can only read/update/delete their own documents
 - Returns 403 FORBIDDEN if accessing another user's document
 
+## Payment System (PromptPay QR)
+
+### Payment Endpoints
+
+| Method | Endpoint | Description | Request Body | Auth Required |
+| ------ | -------- | ----------- | ------------ | ------------- |
+| POST | `/api/payment/create` | Create new payment | `{ amount, description? }` | ✅ Yes |
+| GET | `/api/payment/history` | Get user's payment history | - | ✅ Yes |
+| GET | `/api/payment/:id` | Get payment details | - | ✅ Yes |
+| PUT | `/api/payment/:id/verify` | Verify payment (Admin) | `{ status }` | ✅ Admin |
+
+**Payment Status Values:**
+- `pending` - Waiting for payment
+- `paid` - Payment confirmed
+- `expired` - Payment expired
+- `cancelled` - Payment cancelled
+
+**QR Code Image:**
+- Static PromptPay QR image located at: `/uploads/qr-codes/promptpay-qr.png`
+- Access via: `http://localhost:5000/uploads/qr-codes/promptpay-qr.png`
+- Amount is fixed in the QR code (currently 1 THB for testing)
+
+---
+
+## Payment API Testing Results
+
+### ✅ Test Date: 2026-02-22
+
+**Test Environment:**
+- Server: Running on port 5000
+- Database: MongoDB (testDB)
+- Environment: development
+- QR Code Image: `/uploads/qr-codes/promptpay-qr.jpg` (79 KB)
+
+---
+
+### Test Cases
+
+#### 1. Create User Signup ✅
+**Request:**
+```bash
+POST /api/user/signup
+Body: {"user_name":"testpayment","user_email":"testpayment@example.com","user_password":"password123"}
+```
+
+**Response:**
+```json
+{"message":"User created successfully","user_name":"testpayment"}
+```
+
+**Status:** ✅ PASSED
+
+---
+
+#### 2. User Signin ✅
+**Request:**
+```bash
+POST /api/user/signin
+Body: {"user_email":"testpayment@example.com","user_password":"password123"}
+```
+
+**Response:**
+```json
+{"message":"User signed in successfully","user_name":"testpayment"}
+```
+
+**Status:** ✅ PASSED
+- Cookie token saved successfully
+
+---
+
+#### 3. Create Payment ✅
+**Request:**
+```bash
+POST /api/payment/create
+Body: {"amount":1,"description":"Test payment 1 THB"}
+Cookie: [auth_token]
+```
+
+**Response:**
+```json
+{
+  "message":"Payment created successfully. Please scan the QR code to pay.",
+  "payment":{
+    "id":"69a429ecaaf2bd29982fe557",
+    "amount":1,
+    "description":"Test payment 1 THB",
+    "qr_code_url":"/uploads/qr-codes/promptpay-qr.jpg",
+    "status":"pending",
+    "expires_at":"2026-03-02T11:58:36.784Z"
+  }
+}
+```
+
+**Status:** ✅ PASSED
+- Payment ID: `69a429ecaaf2bd29982fe557`
+- QR Code URL accessible at: `http://localhost:5000/uploads/qr-codes/promptpay-qr.jpg`
+
+---
+
+#### 4. Get Payment History ✅
+**Request:**
+```bash
+GET /api/payment/history
+Cookie: [auth_token]
+```
+
+**Response:**
+```json
+{
+  "message":"Payments retrieved successfully",
+  "count":1,
+  "payments":[{
+    "_id":"69a429ecaaf2bd29982fe557",
+    "user_id":"69a428bbbbe6377409a42c72",
+    "amount":1,
+    "description":"Test payment 1 THB",
+    "qr_code_url":"/uploads/qr-codes/promptpay-qr.jpg",
+    "status":"pending",
+    "expires_at":"2026-03-02T11:58:36.784Z",
+    "createdAt":"2026-03-01T11:58:36.799Z",
+    "updatedAt":"2026-03-01T11:58:36.799Z"
+  }]
+}
+```
+
+**Status:** ✅ PASSED
+- Returns 1 payment record
+- All fields correctly populated
+
+---
+
+#### 5. Access QR Code Image ✅
+**Request:**
+```bash
+GET /uploads/qr-codes/promptpay-qr.jpg
+```
+
+**Response:**
+- Status: 200 OK
+- File size: 79,108 bytes (77.3 KB)
+- Content-Type: image/jpeg
+
+**Status:** ✅ PASSED
+- Static file serving working correctly
+
+---
+
+### Summary
+
+| Test Case | Status |
+|-----------|--------|
+| User Signup | ✅ PASSED |
+| User Signin | ✅ PASSED |
+| Create Payment | ✅ PASSED |
+| Get Payment History | ✅ PASSED |
+| Access QR Code Image | ✅ PASSED |
+
+**Overall Result:** ✅ ALL TESTS PASSED (5/5)
+
+---
+
+### Notes
+
+1. **QR Code Image**: Currently using fixed PromptPay QR image (`promptpay-qr.jpg`) with pre-set amount of 1 THB
+2. **Payment Flow**: User creates payment → Scans QR code → Admin verifies payment → Status changes to "paid"
+3. **Expiration**: Payments automatically expire after 24 hours
+4. **Authentication**: All payment endpoints require valid JWT token
+
+---
+
 ## User Roles
 
 The system supports three user roles:
