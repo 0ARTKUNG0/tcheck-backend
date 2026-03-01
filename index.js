@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const userRouter = require("./router/user.router");
 const documentRouter = require("./router/document.router");
+const grammarRouter = require("./router/grammar.router");
 
 // Validate required environment variables
 const requiredEnvVars = ["PORT", "MONGODB_URL", "JWT_SECRET", "BASE_URL", "NODE_ENV"];
@@ -49,6 +50,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/user", userRouter);
 app.use("/api/docs", documentRouter);
+app.use("/api/grammar", grammarRouter);
 
 // Connect to MongoDB and start server only after successful connection
 mongoose.connect(MONGODB_URL)
