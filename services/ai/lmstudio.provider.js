@@ -14,7 +14,7 @@ class LMStudioProvider extends BaseAIProvider {
             const response = await axios.post(
                 `${this.config.baseURL}/v1/chat/completions`,
                 {
-                    model: process.env.LMSTUDIO_MODEL || "local-model", // Use env var or default
+                    model: process.env.LMSTUDIO_MODEL || "local-model",
                     messages: [
                         {
                             role: "system",
@@ -37,13 +37,11 @@ class LMStudioProvider extends BaseAIProvider {
                 }
             );
 
-            // Extract JSON from response
             const content = response.data?.choices?.[0]?.message?.content;
             if (!content) {
                 throw new Error("No content in LM Studio response");
             }
 
-            // Parse JSON response
             let parsedResponse;
             try {
                 parsedResponse = JSON.parse(content);
@@ -52,7 +50,6 @@ class LMStudioProvider extends BaseAIProvider {
                 throw new Error("PARSE_ERROR");
             }
 
-            // Normalize and validate response (pass original text for position calculation)
             return this.normalizeResponse(parsedResponse, text);
 
         } catch (error) {

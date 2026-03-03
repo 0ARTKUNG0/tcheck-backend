@@ -7,3 +7,5 @@ package-lock.json
 postman
 .postman
 docs
+swagger.yml
+.claude

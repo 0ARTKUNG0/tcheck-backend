@@ -1,16 +1,13 @@
-// Simple in-memory rate limiting (consider using Redis for production)
 const requestCounts = new Map();
-const requestHistory = new Map(); // Track request times for per-second limiting
+const requestHistory = new Map();
 
-// Helper function to clean up old entries periodically
 setInterval(() => {
     const now = Date.now();
     for (const [key, data] of requestCounts.entries()) {
-        if (now - data.resetTime > 60000) { // Clean entries older than 1 minute
+        if (now - data.resetTime > 60000) {
             requestCounts.delete(key);
         }
     }
-    // Clean up request history older than 1 minute
     for (const [key, times] of requestHistory.entries()) {
         const filtered = times.filter(time => now - time < 60000);
         if (filtered.length === 0) {
@@ -19,13 +16,11 @@ setInterval(() => {
             requestHistory.set(key, filtered);
         }
     }
-}, 60000); // Run cleanup every minute
+}, 60000);
 
 const rateLimitMiddleware = (req, res, next) => {
-    // Get user role (set by optionalAuth middleware)
     const userRole = req.userRole || "guest";
 
-    // Get rate limit configuration based on user role (per minute)
     const minuteLimits = {
         guest: parseInt(process.env.AI_RATE_LIMIT_GUEST) || 5,
         "user-free": parseInt(process.env.AI_RATE_LIMIT_FREE) || 10,
@@ -33,23 +28,19 @@ const rateLimitMiddleware = (req, res, next) => {
         admin: parseInt(process.env.AI_RATE_LIMIT_ADMIN) || 100
     };
 
-    // Per-second limits (for Typhoon API compatibility)
     const secondLimits = {
-        guest: 1,  // 1 request per second for guests
-        "user-free": 2,  // 2 requests per second for free users
-        "user-pro": 4,  // 4 requests per second for pro users
-        admin: 5  // 5 requests per second for admin (Typhoon's max)
+        guest: 1,
+        "user-free": 2,
+        "user-pro": 4,
+        admin: 5
     };
 
     const minuteLimit = minuteLimits[userRole] || minuteLimits.guest;
     const secondLimit = secondLimits[userRole] || secondLimits.guest;
-    const windowMs = parseInt(process.env.AI_RATE_WINDOW_MS) || 60000; // Default: 1 minute
-
-    // Use user ID if authenticated, otherwise use IP address
+    const windowMs = parseInt(process.env.AI_RATE_WINDOW_MS) || 60000;
     const identifier = req.user ? req.user._id.toString() : req.ip;
     const now = Date.now();
 
-    // Check per-second rate limit
     let history = requestHistory.get(identifier) || [];
     const oneSecondAgo = now - 1000;
     const recentRequests = history.filter(time => time > oneSecondAgo);
@@ -62,22 +53,17 @@ const rateLimitMiddleware = (req, res, next) => {
         });
     }
 
-    // Check per-minute rate limit
     let rateLimitData = requestCounts.get(identifier);
-
     if (!rateLimitData || now > rateLimitData.resetTime) {
-        // Create new window
         rateLimitData = {
             count: 1,
             resetTime: now + windowMs
         };
         requestCounts.set(identifier, rateLimitData);
     } else {
-        // Increment count in current window
         rateLimitData.count++;
     }
 
-    // Check if minute limit exceeded
     if (rateLimitData.count > minuteLimit) {
         const retryAfter = Math.ceil((rateLimitData.resetTime - now) / 1000);
 
@@ -91,17 +77,14 @@ const rateLimitMiddleware = (req, res, next) => {
         });
     }
 
-    // Update request history
     history.push(now);
-    requestHistory.set(identifier, history.filter(time => now - time < 60000)); // Keep only last minute
+    requestHistory.set(identifier, history.filter(time => now - time < 60000));
 
-    // Add rate limit headers
     res.setHeader('X-RateLimit-Limit-Minute', minuteLimit);
     res.setHeader('X-RateLimit-Remaining-Minute', minuteLimit - rateLimitData.count);
     res.setHeader('X-RateLimit-Limit-Second', secondLimit);
     res.setHeader('X-RateLimit-Reset', new Date(rateLimitData.resetTime).toISOString());
 
-    // Store rate limit info in request for controller to use
     req.rateLimitInfo = {
         minuteLimit: minuteLimit,
         minuteRemaining: minuteLimit - rateLimitData.count,

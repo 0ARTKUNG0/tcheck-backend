@@ -27,6 +27,8 @@ REST API backend for tcheck built with Node.js, Express 5, and MongoDB.
 
 All environment variables are **required** and validated at startup.
 
+### Core Configuration
+
 | Variable      | Description                | Example                            |
 | ------------- | -------------------------- | ---------------------------------- |
 | `PORT`        | Server port                | `5000`                             |
@@ -34,6 +36,55 @@ All environment variables are **required** and validated at startup.
 | `JWT_SECRET`  | Secret key for JWT signing | `your-secure-secret-key`           |
 | `NODE_ENV`    | Environment mode           | `development` / `production`       |
 | `BASE_URL`    | Allowed CORS origin        | `http://localhost:3000`            |
+
+### AI Provider Configuration
+
+| Variable             | Description                           | Default                   |
+| -------------------- | ------------------------------------- | ------------------------- |
+| `AI_PROVIDER`        | AI provider to use                    | `typhoon` (or `lmstudio`) |
+| `AI_MAX_TEXT_LENGTH` | Maximum text length for grammar check | `5000`                    |
+| `AI_TIMEOUT_MS`      | AI request timeout in milliseconds    | `12000`                   |
+
+### Token Limits by User Role (characters allowed per request)
+
+| Variable                | Description                 | Default |
+| ----------------------- | --------------------------- | ------- |
+| `TOKEN_LIMIT_GUEST`     | Guest users (not logged in) | `1000`  |
+| `TOKEN_LIMIT_USER_FREE` | Free tier users             | `4000`  |
+| `TOKEN_LIMIT_USER_PRO`  | Pro tier users              | `10000` |
+| `TOKEN_LIMIT_ADMIN`     | Admin users                 | `50000` |
+
+### Typhoon AI Configuration (required if AI_PROVIDER=typhoon)
+
+| Variable           | Description          | Default                      |
+| ------------------ | -------------------- | ---------------------------- |
+| `TYPHOON_API_KEY`  | Your Typhoon API key | (required)                   |
+| `TYPHOON_BASE_URL` | Typhoon API base URL | `https://api.opentyphoon.ai` |
+| `TYPHOON_MODEL`    | Model to use         | `typhoon-v1.5-instruct`      |
+
+### LM Studio Configuration (required if AI_PROVIDER=lmstudio)
+
+| Variable            | Description              | Default                 |
+| ------------------- | ------------------------ | ----------------------- |
+| `LMSTUDIO_BASE_URL` | LM Studio server URL     | `http://localhost:1234` |
+| `LMSTUDIO_MODEL`    | Model name for LM Studio | `local-model`           |
+
+### Rate Limiting Configuration (per-minute limits by role)
+
+| Variable              | Description                       | Default |
+| --------------------- | --------------------------------- | ------- |
+| `AI_RATE_LIMIT_GUEST` | Guest users - requests/minute     | `5`     |
+| `AI_RATE_LIMIT_FREE`  | Free tier users - requests/minute | `10`    |
+| `AI_RATE_LIMIT_PRO`   | Pro tier users - requests/minute  | `30`    |
+| `AI_RATE_LIMIT_ADMIN` | Admin users - requests/minute     | `100`   |
+| `AI_RATE_WINDOW_MS`   | Rate limit window in milliseconds | `60000` |
+
+**Note:** Per-second limits are enforced automatically:
+
+- Guest: 1/sec
+- Free: 2/sec
+- Pro: 4/sec
+- Admin: 5/sec (Typhoon's max)
 
 ## Scripts
 
@@ -60,6 +111,65 @@ Base URL: `/api`
 | ------ | --------------------------- | ------------------------ | --------------- |
 | GET    | `/api/user/profile`         | Get current user profile | -               |
 | POST   | `/api/user/update-username` | Update username          | `{ user_name }` |
+
+### Grammar Check (Optional Authentication - Guests Allowed)
+
+| Method | Endpoint             | Description                  | Request Body      | Rate Limit by Role                                      |
+| ------ | -------------------- | ---------------------------- | ----------------- | ------------------------------------------------------- |
+| POST   | `/api/grammar/check` | Check Thai grammar and typos | `{ text, mode? }` | Guest: 5/min, Free: 10/min, Pro: 30/min, Admin: 100/min |
+
+**Request:**
+
+```json
+{
+  "text": "ข้อความภาษาไทย",
+  "mode": "normal" // optional: strict, normal, casual
+}
+```
+
+**Success Response (200):**
+
+```json
+{
+  "issues": [
+    {
+      "start": 12,
+      "end": 14,
+      "span": "ไท",
+      "replacement": "ไทย",
+      "reason": "ขาดตัว ย"
+    }
+  ],
+  "metadata": {
+    "text_length": 50,
+    "issues_found": 1,
+    "mode": "normal",
+    "provider": "typhoon",
+    "requestId": "abc123...",
+    "userRole": "user-free",
+    "tokenLimit": 4000,
+    "tokenUsed": 50,
+    "tokenRemaining": 3950
+  }
+}
+```
+
+**Token Limits by Role:**
+
+- **Guest** (not logged in): 1,000 characters/request
+- **user-free**: 4,000 characters/request
+- **user-pro**: 10,000 characters/request
+- **admin**: 50,000 characters/request
+
+**Error Responses:**
+
+- `400 VALIDATION_ERROR` - Invalid request (missing text, invalid mode)
+- `400 TOKEN_LIMIT_EXCEEDED` - Text exceeds user's token limit
+- `429 RATE_LIMITED` - Too many requests
+- `502 AI_UPSTREAM_ERROR` - AI service unavailable
+- `502 PARSE_ERROR` - Failed to parse AI response
+- `504 AI_TIMEOUT` - AI service timeout
+- `500 INTERNAL_ERROR` - Unexpected server error
 
 ### Document Management (Requires user-free, user-pro, or admin role)
 
@@ -109,7 +219,7 @@ The application uses JWT-based authentication with httpOnly cookies for security
 
 ### Token Details
 
-- **Expiration**: 1 hour
+- **Expiration**: 3 hour
 - **Storage**: httpOnly cookie (prevents XSS attacks)
 - **Secure flag**: Enabled in production (HTTPS only)
 - **SameSite**: `strict` (CSRF protection)
@@ -130,16 +240,80 @@ The application uses JWT-based authentication with httpOnly cookies for security
 - ✅ Server starts only after successful DB connection
 - ✅ CORS configured with specific origin whitelist
 
+## AI-Powered Thai Grammar Checker
+
+The backend includes an AI-powered Thai grammar and typo checker supporting multiple AI providers.
+
+### Features
+
+- **Multi-Provider Support**: Works with Typhoon API or local LM Studio
+- **Guest Access**: Non-logged-in users can use the service with limited tokens
+- **Role-Based Token Limits**: Different character limits based on user role
+- **Dual Rate Limiting**: Per-second (1-5 req/sec) and per-minute (5-100 req/min) based on role
+- **Character Positions**: Returns start/end offsets for frontend highlighting (like Grammarly)
+- **Minimal Edit Policy**: AI enforced to only fix typos/spelling, not rewrite sentences
+- **Validation Guardrails**: Code-level checks reject semantic word substitutions
+
+### How It Works
+
+1. User sends Thai text to `/api/grammar/check`
+2. System validates token limit based on user role
+3. Rate limiting applies (per-second and per-minute)
+4. AI provider analyzes text for typos/grammar issues
+5. Response normalized and validated (max 20 issues)
+6. Issues filtered to ensure minimal edits only (no semantic changes)
+7. Returns issues with character positions for highlighting
+
+### System Prompt Policy
+
+The AI is instructed to:
+
+- Find ALL typos and fix with minimal edits
+- Detect: missing characters, missing tone marks, wrong characters, wrong tone marks
+- **NOT** change to different words (e.g., "เทียง" → "เที่ยง" ✓, but "เทียง" → "เย็น" ✗)
+- **NOT** rewrite sentences
+- Return max 20 issues ordered by position
+
+### Validation Guardrails
+
+Server-side validation ensures:
+
+- Edit distance: max 1-2 character changes allowed
+- Character overlap: minimum 50% shared characters required
+- Rejects semantic substitutions even if AI suggests them
+- Logs filtered changes: `[FILTER] Rejected semantic change: "เทียง" -> "เย็น"`
+
+### Provider Configuration
+
+Switch between providers via `AI_PROVIDER` environment variable:
+
+**Typhoon API:**
+
+- Uses `typhoon-v1.5-instruct` model
+- Requires API key from OpenTyphoon
+- Endpoint: `https://api.opentyphoon.ai/v1/chat/completions`
+
+**LM Studio:**
+
+- Runs locally on your machine
+- Uses whatever model is loaded
+- Default endpoint: `http://localhost:1234/v1/chat/completions`
+
 ## Error Handling
 
-| Status Code | Meaning                                        | Error Code         |
-| ----------- | ---------------------------------------------- | ------------------ |
-| `400`       | Bad Request (missing fields, validation error) | `VALIDATION_ERROR` |
-| `401`       | Unauthorized (invalid credentials or no token) | -                  |
-| `403`       | Forbidden (ownership or role violation)        | `FORBIDDEN`        |
-| `404`       | Not Found (resource not found)                 | `NOT_FOUND`        |
-| `409`       | Conflict (email already exists)                | -                  |
-| `500`       | Internal Server Error                          | `INTERNAL_ERROR`   |
+| Status Code | Meaning                                        | Error Code             |
+| ----------- | ---------------------------------------------- | ---------------------- |
+| `400`       | Bad Request (missing fields, validation error) | `VALIDATION_ERROR`     |
+| `400`       | Token limit exceeded                           | `TOKEN_LIMIT_EXCEEDED` |
+| `401`       | Unauthorized (invalid credentials or no token) | -                      |
+| `403`       | Forbidden (ownership or role violation)        | `FORBIDDEN`            |
+| `404`       | Not Found (resource not found)                 | `NOT_FOUND`            |
+| `409`       | Conflict (email already exists)                | -                      |
+| `429`       | Rate limited (too many requests)               | `RATE_LIMITED`         |
+| `500`       | Internal Server Error                          | `INTERNAL_ERROR`       |
+| `502`       | AI service unavailable                         | `AI_UPSTREAM_ERROR`    |
+| `502`       | Failed to parse AI response                    | `PARSE_ERROR`          |
+| `504`       | AI service timeout                             | `AI_TIMEOUT`           |
 
 ## Testing Document Endpoints with curl
 
@@ -182,13 +356,16 @@ curl -X DELETE http://localhost:5000/api/docs/{id} \
 - **Database:** MongoDB with Mongoose 9
 - **Auth:** JWT (httpOnly cookies) + bcryptjs
 
-## Postman Collection
+## API Documentation
 
-Import the `tcheck-backend.postman_collection.json` file into Postman to test all API endpoints.
+- **Interactive API Docs**: [View on SwaggerHub](https://app.swaggerhub.com/apis-docs/none-767/tcheck-backend-api/1.3.0?view=uiDocs) - Try out the API directly in your browser
+- **Postman Collection**: Import `tcheck-backend.postman_collection.json` to test all endpoints
+- **OpenAPI Spec**: See `swagger.yml` for complete API documentation
 
-The collection includes:
+The collections include:
 
-- User signup, signin, signout
-- User profile and update username
+- User authentication (signup, signin, signout)
+- User profile management
 - Document CRUD operations
+- AI grammar checking
 - Health check endpoint

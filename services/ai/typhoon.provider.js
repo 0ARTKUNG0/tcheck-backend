@@ -39,13 +39,11 @@ class TyphoonProvider extends BaseAIProvider {
                 }
             );
 
-            // Extract JSON from response
             const content = response.data?.choices?.[0]?.message?.content;
             if (!content) {
                 throw new Error("No content in Typhoon response");
             }
 
-            // Parse JSON response
             let parsedResponse;
             try {
                 parsedResponse = JSON.parse(content);
@@ -54,7 +52,6 @@ class TyphoonProvider extends BaseAIProvider {
                 throw new Error("PARSE_ERROR");
             }
 
-            // Normalize and validate response (pass original text for position calculation)
             return this.normalizeResponse(parsedResponse, text);
 
         } catch (error) {
@@ -67,7 +64,6 @@ class TyphoonProvider extends BaseAIProvider {
             if (error.response?.status >= 500) {
                 throw new Error("AI_UPSTREAM_ERROR");
             }
-            // Log detailed error for 400 Bad Request
             if (error.response?.status === 400) {
                 console.error("Typhoon API 400 Error:", JSON.stringify(error.response.data, null, 2));
                 throw new Error("AI_UPSTREAM_ERROR");

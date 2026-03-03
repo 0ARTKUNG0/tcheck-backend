@@ -9,7 +9,6 @@ const userRouter = require("./router/user.router");
 const documentRouter = require("./router/document.router");
 const grammarRouter = require("./router/grammar.router");
 
-// Validate required environment variables
 const requiredEnvVars = ["PORT", "MONGODB_URL", "JWT_SECRET", "BASE_URL", "NODE_ENV"];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
@@ -30,7 +29,6 @@ const allowedOrigins = [process.env.BASE_URL];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like Postman, mobile apps, curl)
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
@@ -52,7 +50,6 @@ app.use("/api/user", userRouter);
 app.use("/api/docs", documentRouter);
 app.use("/api/grammar", grammarRouter);
 
-// Connect to MongoDB and start server only after successful connection
 mongoose.connect(MONGODB_URL)
     .then(() => {
         console.log("Connected to MongoDB successfully");
