@@ -27,7 +27,7 @@ class TyphoonProvider extends BaseAIProvider {
                         }
                     ],
                     temperature: 0.1,
-                    max_tokens: 500,
+                    max_tokens: 2000,
                     response_format: { type: "json_object" }
                 },
                 {
@@ -67,6 +67,12 @@ class TyphoonProvider extends BaseAIProvider {
             if (error.response?.status >= 500) {
                 throw new Error("AI_UPSTREAM_ERROR");
             }
+            // Log detailed error for 400 Bad Request
+            if (error.response?.status === 400) {
+                console.error("Typhoon API 400 Error:", JSON.stringify(error.response.data, null, 2));
+                throw new Error("AI_UPSTREAM_ERROR");
+            }
+            console.error("Typhoon API Error:", error.message, error.response?.data);
             throw error;
         }
     }
