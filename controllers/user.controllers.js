@@ -7,14 +7,11 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 const SignUp = async (req, res) => {
     const {user_name, user_email, user_password} = req.body;
-        //check all field is filled
         if(!user_name || !user_email || !user_password){
             return res.status(400).json({message: "All fields are required"});
         }
         try{
-            //hash password
             const hashPassword = bcrypt.hashSync(user_password, SALT);
-            //create new user (role defaults to user-free)
             const user = new User({
                 user_name,
                 user_email,
@@ -25,13 +22,11 @@ const SignUp = async (req, res) => {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "strict",
-                //3 hours
                 maxAge: 60 * 60 * 1000 * 3
             });
             await user.save();
             return res.status(201).json({message: "User created successfully", user_name: user.user_name});
     } catch(error){
-        // Handle duplicate email error (where this error code come from 11000 is a mongoose error code that when a unique index is duplicate it will throw this error)
         if (error.code === 11000) {
             return res.status(409).json({ message: "Email already exists" });
         }
@@ -59,7 +54,6 @@ const SignIn = async (req, res) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            //3 hours
             maxAge: 60 * 60 * 1000 * 3
         });
         return res.status(200).json({message: "User signed in successfully", user_name: user.user_name});
@@ -77,11 +71,10 @@ const signOut = async (req, res) => {
         console.log(error);
         return res.status(500).json({message: "Internal server error"});
     }
-} 
-//get user profile
+}
+
 const getUserProfile = async (req, res) => {
     try{
-        // The user is already populated in req.user by the middleware
         return res.status(200).json({ user: req.user });
     } catch(error){
         console.log(error);
@@ -89,7 +82,6 @@ const getUserProfile = async (req, res) => {
     }
 }
 
-//update User username
 const updateUsername = async (req, res) => {
     const {user_name} = req.body;
     if(!user_name){
