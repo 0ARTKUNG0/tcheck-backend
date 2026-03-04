@@ -37,6 +37,65 @@ All environment variables are **required** and validated at startup.
 | `NODE_ENV`    | Environment mode           | `development` / `production`       |
 | `BASE_URL`    | Allowed CORS origin        | `http://localhost:3000`            |
 
+### AI Provider Configuration
+
+| Variable             | Description                           | Default                             |
+| -------------------- | ------------------------------------- | ----------------------------------- |
+| `AI_PROVIDER`        | AI provider to use                    | `typhoon`, `lmstudio`, or `openai` |
+| `AI_MAX_TEXT_LENGTH` | Maximum text length for grammar check | `5000`                              |
+| `AI_TIMEOUT_MS`      | AI request timeout in milliseconds    | `12000`                             |
+
+### Token Limits by User Role (characters allowed per request)
+
+| Variable                | Description                 | Default |
+| ----------------------- | --------------------------- | ------- |
+| `TOKEN_LIMIT_GUEST`     | Guest users (not logged in) | `1000`  |
+| `TOKEN_LIMIT_USER_FREE` | Free tier users             | `4000`  |
+| `TOKEN_LIMIT_USER_PRO`  | Pro tier users              | `10000` |
+| `TOKEN_LIMIT_ADMIN`     | Admin users                 | `50000` |
+
+### Typhoon AI Configuration (required if AI_PROVIDER=typhoon)
+
+| Variable           | Description          | Default                      |
+| ------------------ | -------------------- | ---------------------------- |
+| `TYPHOON_API_KEY`  | Your Typhoon API key | (required)                   |
+| `TYPHOON_BASE_URL` | Typhoon API base URL | `https://api.opentyphoon.ai` |
+| `TYPHOON_MODEL`    | Model to use         | `typhoon-v1.5-instruct`      |
+
+### LM Studio Configuration (required if AI_PROVIDER=lmstudio)
+
+| Variable            | Description              | Default                 |
+| ------------------- | ------------------------ | ----------------------- |
+| `LMSTUDIO_BASE_URL` | LM Studio server URL     | `http://localhost:1234` |
+| `LMSTUDIO_MODEL`    | Model name for LM Studio | `local-model`           |
+
+### OpenAI-Compatible Provider Configuration (required if AI_PROVIDER=openai)
+
+Works with any OpenAI-compatible API: OpenAI, Gemini, Groq, Together, Mistral, DeepSeek, Ollama, etc.
+
+| Variable                     | Description       | Example                  |
+| ---------------------------- | ----------------- | ------------------------ |
+| `OPENAI_COMPATIBLE_BASE_URL` | API base URL      | `https://api.openai.com` |
+| `OPENAI_COMPATIBLE_API_KEY`  | API key           | `sk-xxx`                 |
+| `OPENAI_COMPATIBLE_MODEL`    | Model name to use | `gpt-4o-mini`            |
+
+### Rate Limiting Configuration (per-minute limits by role)
+
+| Variable              | Description                       | Default |
+| --------------------- | --------------------------------- | ------- |
+| `AI_RATE_LIMIT_GUEST` | Guest users - requests/minute     | `5`     |
+| `AI_RATE_LIMIT_FREE`  | Free tier users - requests/minute | `10`    |
+| `AI_RATE_LIMIT_PRO`   | Pro tier users - requests/minute  | `30`    |
+| `AI_RATE_LIMIT_ADMIN` | Admin users - requests/minute     | `100`   |
+| `AI_RATE_WINDOW_MS`   | Rate limit window in milliseconds | `60000` |
+
+**Note:** Per-second limits are enforced automatically:
+
+- Guest: 1/sec
+- Free: 2/sec
+- Pro: 4/sec
+- Admin: 5/sec (Typhoon's max)
+
 ## Scripts
 
 | Command       | Description                   |
@@ -203,6 +262,72 @@ The application uses JWT-based authentication with httpOnly cookies for security
 - ✅ Proper HTTP status codes (409 for conflicts, 404 for not found)
 - ✅ Server starts only after successful DB connection
 - ✅ CORS configured with specific origin whitelist
+
+## AI-Powered Thai Grammar Checker
+
+The backend includes an AI-powered Thai grammar and typo checker supporting multiple AI providers.
+
+### Features
+
+- **Multi-Provider Support**: Works with Typhoon API, local LM Studio, or any OpenAI-compatible API
+- **Guest Access**: Non-logged-in users can use the service with limited tokens
+- **Role-Based Token Limits**: Different character limits based on user role
+- **Dual Rate Limiting**: Per-second (1-5 req/sec) and per-minute (5-100 req/min) based on role
+- **Character Positions**: Returns start/end offsets for frontend highlighting (like Grammarly)
+- **Minimal Edit Policy**: AI enforced to only fix typos/spelling, not rewrite sentences
+- **Validation Guardrails**: Code-level checks reject semantic word substitutions
+
+### How It Works
+
+1. User sends Thai text to `/api/grammar/check`
+2. System validates token limit based on user role
+3. Rate limiting applies (per-second and per-minute)
+4. AI provider analyzes text for typos/grammar issues
+5. Response normalized and validated (max 20 issues)
+6. Issues filtered to ensure minimal edits only (no semantic changes)
+7. Returns issues with character positions for highlighting
+
+### System Prompt Policy
+
+The AI is instructed to:
+
+- Find ALL typos and fix with minimal edits
+- Detect: missing characters, missing tone marks, wrong characters, wrong tone marks
+- **NOT** change to different words (e.g., "เทียง" → "เที่ยง" ✓, but "เทียง" → "เย็น" ✗)
+- **NOT** rewrite sentences
+- Return max 20 issues ordered by position
+
+### Validation Guardrails
+
+Server-side validation ensures:
+
+- Edit distance: max 1-2 character changes allowed
+- Character overlap: minimum 50% shared characters required
+- Rejects semantic substitutions even if AI suggests them
+- Logs filtered changes: `[FILTER] Rejected semantic change: "เทียง" -> "เย็น"`
+
+### Provider Configuration
+
+Switch between providers via `AI_PROVIDER` environment variable:
+
+**Typhoon API** (`AI_PROVIDER=typhoon`):
+
+- Uses `typhoon-v1.5-instruct` model
+- Requires API key from OpenTyphoon
+- Endpoint: `https://api.opentyphoon.ai/v1/chat/completions`
+
+**LM Studio** (`AI_PROVIDER=lmstudio`):
+
+- Runs locally on your machine
+- Uses whatever model is loaded
+- Default endpoint: `http://localhost:1234/v1/chat/completions`
+
+**OpenAI-Compatible** (`AI_PROVIDER=openai`):
+
+- Works with any API that follows the OpenAI chat completions format
+- Supports: OpenAI, Gemini, Groq, Together, Mistral, DeepSeek, Ollama, etc.
+- Auto-detects URL structure (handles `/v1` and `/v1beta` paths)
+- Includes truncated JSON repair for models with verbose output
 
 ## Error Handling
 
