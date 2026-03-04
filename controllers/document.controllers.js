@@ -1,14 +1,17 @@
 const Document = require("../models/document.model.js");
 
+const MAX_CORRECTIONS = 6;
+
 // Create new document
 const createDocument = async (req, res) => {
-    const { title, content } = req.body;
+    const { title, content, corrections } = req.body;
 
     try {
         const document = new Document({
             ownerId: req.user._id,
             title: title || "เอกสารไม่มีชื่อ",
-            content: content || ""
+            content: content || "",
+            corrections: (corrections || []).slice(-MAX_CORRECTIONS)
         });
 
         await document.save();
@@ -19,6 +22,7 @@ const createDocument = async (req, res) => {
                 id: document._id,
                 title: document.title,
                 content: document.content,
+                corrections: document.corrections,
                 createdAt: document.createdAt,
                 updatedAt: document.updatedAt
             }
@@ -42,7 +46,7 @@ const getDocuments = async (req, res) => {
         const skip = (pageNum - 1) * limitNum;
 
         const documents = await Document.find({ ownerId: req.user._id })
-            .select("title content updatedAt")
+            .select("title content corrections updatedAt")
             .sort(sort)
             .skip(skip)
             .limit(limitNum);
@@ -53,6 +57,7 @@ const getDocuments = async (req, res) => {
             id: doc._id,
             title: doc.title,
             snippet: doc.content.substring(0, 120).replace(/\n/g, " "),
+            correctionsCount: doc.corrections.length,
             updatedAt: doc.updatedAt
         }));
 
@@ -91,6 +96,7 @@ const getDocument = async (req, res) => {
                 id: document._id,
                 title: document.title,
                 content: document.content,
+                corrections: document.corrections,
                 createdAt: document.createdAt,
                 updatedAt: document.updatedAt
             }
@@ -107,7 +113,7 @@ const getDocument = async (req, res) => {
 // Update document
 const updateDocument = async (req, res) => {
     const { id } = req.params;
-    const { title, content } = req.body;
+    const { title, content, corrections } = req.body;
 
     // Validate: title cannot be empty string if provided
     if (title !== undefined && title.trim() === "") {
@@ -129,6 +135,11 @@ const updateDocument = async (req, res) => {
         // Update fields
         if (title !== undefined) document.title = title;
         if (content !== undefined) document.content = content;
+        if (corrections !== undefined) {
+            // Append new corrections and keep only the latest 6
+            const merged = [...document.corrections, ...corrections];
+            document.corrections = merged.slice(-MAX_CORRECTIONS);
+        }
 
         await document.save();
 
@@ -138,6 +149,7 @@ const updateDocument = async (req, res) => {
                 id: document._id,
                 title: document.title,
                 content: document.content,
+                corrections: document.corrections,
                 createdAt: document.createdAt,
                 updatedAt: document.updatedAt
             }
