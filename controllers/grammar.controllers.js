@@ -45,7 +45,7 @@ const checkGrammar = async (req, res) => {
             });
         }
 
-        const maxLength = parseInt(process.env.AI_MAX_TEXT_LENGTH) || 50000;
+        const maxLength = parseInt(process.env.AI_MAX_TEXT_LENGTH) || 5000;
         if (text.length > maxLength) {
             return res.status(400).json({
                 error: "VALIDATION_ERROR",

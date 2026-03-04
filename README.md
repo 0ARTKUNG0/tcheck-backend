@@ -213,7 +213,7 @@ The application uses JWT-based authentication with httpOnly cookies for security
 
 ### How It Works
 
-1. **Sign up/Sign in**: Server sets an httpOnly cookie with JWT token (1 hour expiration)
+1. **Sign up/Sign in**: Server sets an httpOnly cookie with JWT token (3 hour expiration)
 2. **Protected routes**: Middleware verifies token from cookie or `Authorization: Bearer` header
 3. **Sign out**: Server clears the authentication cookie
 
