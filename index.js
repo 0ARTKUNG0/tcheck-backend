@@ -8,6 +8,7 @@ const cookieParser = require("cookie-parser");
 const userRouter = require("./router/user.router");
 const documentRouter = require("./router/document.router");
 const grammarRouter = require("./router/grammar.router");
+const paymentRouter = require("./router/payment.router");
 
 const requiredEnvVars = ["PORT", "MONGODB_URL", "JWT_SECRET", "BASE_URL", "NODE_ENV"];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -42,6 +43,9 @@ app.use(cors({
 
 app.use(cookieParser());
 
+// Serve static files for QR codes and uploads
+app.use("/uploads", express.static("uploads"));
+
 app.get("/", (req, res) => {
     res.json({ message: "tcheck API is running" });
 });
@@ -49,6 +53,7 @@ app.get("/", (req, res) => {
 app.use("/api/user", userRouter);
 app.use("/api/docs", documentRouter);
 app.use("/api/grammar", grammarRouter);
+app.use("/api/payment", paymentRouter);
 
 mongoose.connect(MONGODB_URL)
     .then(() => {
