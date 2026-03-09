@@ -115,6 +115,13 @@ Base URL: `/api`
 | POST   | `/api/user/signin`  | Sign in with email or username | `{ user_email or user_name, user_password }` |
 | POST   | `/api/user/signout` | Sign out (clears cookie)       | -                                            |
 
+**User Signup Validation:**
+- Email must be valid format (validated with regex)
+- Password must be at least 6 characters
+- Email is normalized to lowercase before storage
+- Returns `400 VALIDATION_ERROR` for invalid input
+- Returns `409 DUPLICATE_EMAIL` if email already exists
+
 ### Protected Endpoints (Requires Authentication)
 
 | Method | Endpoint                    | Description              | Request Body    |
@@ -207,6 +214,8 @@ Base URL: `/api`
 }
 ```
 
+Each correction must have `span` (string), `replacement` (string), and `reason` (string).
+
 On update, new corrections are appended to existing ones. Only the latest 6 are kept.
 
 **List Response includes:**
@@ -218,7 +227,7 @@ On update, new corrections are appended to existing ones. Only the latest 6 are 
 **Ownership Policy:**
 
 - Users can only read/update/delete their own documents
-- Returns 403 FORBIDDEN if accessing another user's document
+- Returns `403 FORBIDDEN` if accessing another user's document
 
 ## User Roles
 
@@ -398,4 +407,3 @@ The collections include:
 - User profile management
 - Document CRUD operations
 - AI grammar checking
-- Health check endpoint

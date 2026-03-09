@@ -12,13 +12,13 @@ const checkGrammar = async (req, res) => {
         const { text, mode } = req.body;
         if (!text) {
             return res.status(400).json({
-                error: "VALIDATION_ERROR",
+                code: "VALIDATION_ERROR",
                 message: "Text is required"
             });
         }
         if (typeof text !== 'string') {
             return res.status(400).json({
-                error: "VALIDATION_ERROR",
+                code: "VALIDATION_ERROR",
                 message: "Text must be a string"
             });
         }
@@ -37,7 +37,7 @@ const checkGrammar = async (req, res) => {
 
         if (text.length > userTokenLimit) {
             return res.status(400).json({
-                error: "TOKEN_LIMIT_EXCEEDED",
+                code: "TOKEN_LIMIT_EXCEEDED",
                 message: `Text exceeds your token limit of ${userTokenLimit} characters. Your role (${userRole}) allows up to ${userTokenLimit} characters per request.`,
                 currentLength: text.length,
                 allowedLength: userTokenLimit,
@@ -45,10 +45,10 @@ const checkGrammar = async (req, res) => {
             });
         }
 
-        const maxLength = parseInt(process.env.AI_MAX_TEXT_LENGTH) || 5000;
+        const maxLength = parseInt(process.env.AI_MAX_TEXT_LENGTH) || 50000;
         if (text.length > maxLength) {
             return res.status(400).json({
-                error: "VALIDATION_ERROR",
+                code: "VALIDATION_ERROR",
                 message: `Text exceeds absolute maximum length of ${maxLength} characters`
             });
         }
@@ -57,7 +57,7 @@ const checkGrammar = async (req, res) => {
         const checkMode = mode || 'normal';
         if (!validModes.includes(checkMode)) {
             return res.status(400).json({
-                error: "VALIDATION_ERROR",
+                code: "VALIDATION_ERROR",
                 message: `Invalid mode. Must be one of: ${validModes.join(', ')}`
             });
         }
@@ -96,28 +96,28 @@ const checkGrammar = async (req, res) => {
 
         if (error.message === "AI_TIMEOUT") {
             return res.status(504).json({
-                error: "AI_TIMEOUT",
+                code: "AI_TIMEOUT",
                 message: "AI service took too long to respond",
                 requestId: requestId
             });
         }
         if (error.message === "AI_UPSTREAM_ERROR") {
             return res.status(502).json({
-                error: "AI_UPSTREAM_ERROR",
+                code: "AI_UPSTREAM_ERROR",
                 message: "AI service is currently unavailable",
                 requestId: requestId
             });
         }
         if (error.message === "PARSE_ERROR") {
             return res.status(502).json({
-                error: "PARSE_ERROR",
+                code: "PARSE_ERROR",
                 message: "Failed to parse AI response",
                 requestId: requestId
             });
         }
 
         return res.status(500).json({
-            error: "INTERNAL_ERROR",
+            code: "INTERNAL_ERROR",
             message: "An unexpected error occurred",
             requestId: requestId
         });

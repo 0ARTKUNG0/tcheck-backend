@@ -1,6 +1,20 @@
 const dotenv = require("dotenv");
 dotenv.config();
 
+const requiredEnvVars = ["PORT", "MONGODB_URL", "JWT_SECRET", "BASE_URL", "NODE_ENV"];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missingEnvVars.join(", ")}`);
+    console.error("Please check your .env file.");
+    console.error("\nRequired variables:");
+    requiredEnvVars.forEach(v => {
+        const status = process.env[v] ? "✓" : "✗";
+        console.error(`  ${status} ${v}`);
+    });
+    process.exit(1);
+}
+
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -9,15 +23,6 @@ const userRouter = require("./router/user.router");
 const documentRouter = require("./router/document.router");
 const grammarRouter = require("./router/grammar.router");
 const paymentRouter = require("./router/payment.router");
-
-const requiredEnvVars = ["PORT", "MONGODB_URL", "JWT_SECRET", "BASE_URL", "NODE_ENV"];
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-if (missingEnvVars.length > 0) {
-    console.error(`Missing required environment variables: ${missingEnvVars.join(", ")}`);
-    console.error("Please check your .env file.");
-    process.exit(1);
-}
 
 const PORT = process.env.PORT;
 const MONGODB_URL = process.env.MONGODB_URL;
