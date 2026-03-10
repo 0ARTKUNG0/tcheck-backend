@@ -49,7 +49,7 @@ const SignUp = async (req, res) => {
                 maxAge: 60 * 60 * 1000 * 3
             });
             await user.save();
-            return res.status(201).json({message: "User created successfully", user_name: user.user_name, user_role: user.user_role});
+            return res.status(201).json({message: "User created successfully", user_name: user.user_name, user_role: user.user_role, user_email: user.user_email});
     } catch(error){
         if (error.code === 11000) {
             return res.status(409).json({
@@ -100,7 +100,7 @@ const SignIn = async (req, res) => {
             sameSite: "strict",
             maxAge: 60 * 60 * 1000 * 3
         });
-        return res.status(200).json({message: "User signed in successfully", user_name: user.user_name, user_role: user.user_role});
+        return res.status(200).json({message: "User signed in successfully", user_name: user.user_name, user_role: user.user_role, user_email: user.user_email});
     } catch(error){
         console.log(error);
         return res.status(500).json({
