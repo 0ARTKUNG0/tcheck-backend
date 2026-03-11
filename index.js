@@ -28,6 +28,7 @@ const PORT = process.env.PORT;
 const MONGODB_URL = process.env.MONGODB_URL;
 
 const app = express();
+app.set("trust proxy", 1);
 
 app.use(express.json());
 
@@ -74,3 +75,6 @@ mongoose.connect(MONGODB_URL)
         console.error("Server not started. Please check your MongoDB connection.");
         process.exit(1);
     });
+
+
+

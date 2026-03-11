@@ -4,6 +4,15 @@ const jwt = require("jsonwebtoken");
 const SALT = bcrypt.genSaltSync(10);
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// Cookie options สำหรับ cross-origin deployment (FE/BE คนละโดเมน)
+const cookieOptions = {
+    httpOnly: true,
+    secure: true,      // production บน https
+    sameSite: "none",  // FE/BE คนละโดเมน ต้องเป็น none
+    path: "/",
+    maxAge: 3 * 60 * 60 * 1000,
+};
+
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -42,12 +51,7 @@ const SignUp = async (req, res) => {
             user_password: hashPassword
         });
             const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
-            res.cookie("token", token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
-                maxAge: 60 * 60 * 1000 * 3
-            });
+            res.cookie("token", token, cookieOptions);
             await user.save();
             return res.status(201).json({message: "User created successfully", user_name: user.user_name, user_role: user.user_role, user_email: user.user_email});
     } catch(error){
@@ -94,12 +98,7 @@ const SignIn = async (req, res) => {
             });
         }
         const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 60 * 60 * 1000 * 3
-        });
+        res.cookie("token", token, cookieOptions);
         return res.status(200).json({message: "User signed in successfully", user_name: user.user_name, user_role: user.user_role, user_email: user.user_email});
     } catch(error){
         console.log(error);
@@ -112,7 +111,13 @@ const SignIn = async (req, res) => {
 
 const signOut = async (req, res) => {
     try {
-        res.clearCookie("token");
+        // res.clearCookie("token", cookieOptions);
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            path: "/",
+        });
         return res.status(200).json({message: "User signed out successfully"});
     } catch (error) {
         console.log(error);
