@@ -62,6 +62,10 @@ class LMStudioProvider extends BaseAIProvider {
             if (error.code === 'ECONNREFUSED') {
                 throw new Error("AI_UPSTREAM_ERROR");
             }
+            if (error.response?.status === 429) {
+                console.warn("LM Studio API Rate Limit Hit (429):", error.response?.data);
+                throw new Error("AI_RATE_LIMIT");
+            }
             if (error.response?.status >= 500) {
                 throw new Error("AI_UPSTREAM_ERROR");
             }

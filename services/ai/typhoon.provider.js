@@ -61,6 +61,10 @@ class TyphoonProvider extends BaseAIProvider {
             if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
                 throw new Error("AI_TIMEOUT");
             }
+            if (error.response?.status === 429) {
+                console.warn("Typhoon API Rate Limit Hit (429):", error.response?.data);
+                throw new Error("AI_RATE_LIMIT");
+            }
             if (error.response?.status >= 500) {
                 throw new Error("AI_UPSTREAM_ERROR");
             }

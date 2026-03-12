@@ -101,6 +101,13 @@ const checkGrammar = async (req, res) => {
                 requestId: requestId
             });
         }
+        if (error.message === "AI_RATE_LIMIT") {
+            return res.status(429).json({
+                code: "AI_RATE_LIMIT",
+                message: "ระบบ AI มีผู้ใช้งานพร้อมกันจำนวนมาก โปรดรอสักครู่แล้วกดตรวจสอบใหม่อีกครั้ง",
+                requestId: requestId
+            });
+        }
         if (error.message === "AI_UPSTREAM_ERROR") {
             return res.status(502).json({
                 code: "AI_UPSTREAM_ERROR",
