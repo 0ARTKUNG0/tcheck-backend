@@ -1,4 +1,5 @@
 const { getAIProvider } = require('../services/ai/provider');
+const User = require('../models/user.model');
 const crypto = require('crypto');
 
 function generateRequestId() {
@@ -64,11 +65,44 @@ const checkGrammar = async (req, res) => {
 
         console.log(`[${requestId}] Processing text (${text.length} chars) with mode: ${checkMode}`);
 
+        // Check and deduct tokens for authenticated users
+        let user = null;
+        if (req.user && req.user._id) {
+            user = await User.findById(req.user._id);
+            if (!user) {
+                return res.status(404).json({
+                    code: "USER_NOT_FOUND",
+                    message: "User not found",
+                    requestId: requestId
+                });
+            }
+
+            // Check if user has enough tokens
+            if (user.remaining_tokens < text.length) {
+                console.log(`[${requestId}] Insufficient tokens. User has ${user.remaining_tokens}, needs ${text.length}`);
+                return res.status(403).json({
+                    code: "INSUFFICIENT_TOKENS",
+                    message: "Insufficient tokens. Please upgrade your plan.",
+                    remaining_tokens: user.remaining_tokens,
+                    required_tokens: text.length,
+                    requestId: requestId
+                });
+            }
+            console.log(`[${requestId}] Token check passed. User has ${user.remaining_tokens} tokens, using ${text.length}`);
+        }
+
         const provider = getAIProvider();
         console.log(`[${requestId}] Using AI provider: ${process.env.AI_PROVIDER || 'typhoon'}`);
 
         const issues = await provider.checkGrammar(text, checkMode);
         console.log(`[${requestId}] Grammar check completed. Found ${issues.length} issues`);
+
+        // Deduct tokens for authenticated users after successful AI response
+        if (user) {
+            user.remaining_tokens -= text.length;
+            await user.save();
+            console.log(`[${requestId}] Deducted ${text.length} tokens. New balance: ${user.remaining_tokens}`);
+        }
 
         return res.status(200).json({
             issues: issues,
@@ -81,7 +115,7 @@ const checkGrammar = async (req, res) => {
                 userRole: userRole,
                 tokenLimit: userTokenLimit,
                 tokenUsed: text.length,
-                tokenRemaining: userTokenLimit - text.length,
+                tokenRemaining: user ? user.remaining_tokens : null,
                 rateLimits: {
                     requestsPerMinute: req.rateLimitInfo?.minuteLimit || 0,
                     requestsRemainingThisMinute: req.rateLimitInfo?.minuteRemaining || 0,

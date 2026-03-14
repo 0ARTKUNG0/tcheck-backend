@@ -23,6 +23,7 @@ const userRouter = require("./router/user.router");
 const documentRouter = require("./router/document.router");
 const grammarRouter = require("./router/grammar.router");
 const paymentRouter = require("./router/payment.router");
+const { initializeCronJobs } = require("./services/cron.service");
 
 const PORT = process.env.PORT;
 const MONGODB_URL = process.env.MONGODB_URL;
@@ -64,6 +65,9 @@ app.use("/api/payment", paymentRouter);
 mongoose.connect(MONGODB_URL)
     .then(() => {
         console.log("Connected to MongoDB successfully");
+
+        // Initialize cron jobs for daily token reset
+        initializeCronJobs();
 
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);

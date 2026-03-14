@@ -13,5 +13,7 @@ router.post("/signout", userController.signOut);
 router.post("/update-username", verifyToken, userController.updateUsername);
 //GET /api/user/profile - ดูโปรไฟล์ผู้ใช้
 router.get("/profile", verifyToken, userController.getUserProfile);
+//GET /api/user/check-token - ตรวจสอบโทเคนคงเหลือ
+router.get("/check-token", verifyToken, userController.checkToken);
 
 module.exports = router;

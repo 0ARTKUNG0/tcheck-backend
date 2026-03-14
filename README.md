@@ -9,8 +9,9 @@ REST API backend for tcheck built with Node.js, Express 5, and MongoDB.
 - ✅ **Improved AI Provider Rate Limit Handling**: AI provider 429 errors now return proper HTTP 429 responses with user-friendly Thai messages instead of generic 500 errors
 - ✅ **Thai Text Chunking Utility**: New `utils/textSegmenter.util.js` for safely splitting Thai text at word boundaries (uses `Intl.Segmenter`)
 - ✅ **Enhanced Error Codes**: Added `AI_RATE_LIMIT` error code for better error handling during high concurrent usage
+- ✅ **Unlimited Document Content**: Removed 5,000 character limit on document content field (now supports up to 16MB)
 
-See [docs/claude_update_rate_limit.md](../docs/claude_update_rate_limit.md) for detailed documentation of these changes.
+See [docs/claude_update_rate_limit.md](../docs/claude_update_rate_limit.md) and [docs/claude_update_document_text_type.md](../docs/claude_update_document_text_type.md) for detailed documentation.
 
 ## Prerequisites
 
@@ -214,7 +215,7 @@ Base URL: `/api`
 **Document Defaults:**
 
 - `title`: "เอกสารไม่มีชื่อ" (max 80 chars)
-- `content`: "" (max 5,000 chars)
+- `content`: "" (unlimited, up to 16MB MongoDB document limit)
 - `corrections`: [] (max 6 items, oldest removed when exceeded)
 
 **Corrections Format:**

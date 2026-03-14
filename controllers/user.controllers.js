@@ -168,10 +168,32 @@ const updateUsername = async (req, res) => {
     }
 }
 
+const checkToken = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('remaining_tokens');
+        if (!user) {
+            return res.status(404).json({
+                code: "NOT_FOUND",
+                message: "User not found"
+            });
+        }
+        return res.status(200).json({
+            remaining_tokens: user.remaining_tokens
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            code: "INTERNAL_ERROR",
+            message: "Internal server error"
+        });
+    }
+}
+
 module.exports = {
     SignUp,
     SignIn,
     signOut,
     getUserProfile,
-    updateUsername
+    updateUsername,
+    checkToken
 }

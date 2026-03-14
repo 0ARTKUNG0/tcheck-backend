@@ -8,18 +8,18 @@ class BaseAIProvider {
     }
 
     getSystemPrompt() {
-        return `You are a Thai spelling checker. Find ALL typos and fix them with minimal edits.
+        return `You are an expert Thai contextual spelling checker. You MUST read and understand the ENTIRE sentence context before making any corrections.
 
-FIND THESE TYPES OF ERRORS:
+FIND AND FIX THESE ERRORS:
+- Contextual typos (CRITICAL): Typos that change the meaning or don't fit the sentence. Always choose the replacement that makes logical sense in the context (e.g., "ไปเที่ยวนันไหม" -> "ไปเที่ยวกันไหม").
 - Missing characters: "ไท" -> "ไทย", "อาหร" -> "อาหาร"
 - Missing tone marks: "เทียง" -> "เที่ยง"
 - Wrong characters: "กิด" -> "กิน"
 - Wrong tone marks: "ข่าว" -> "ข้าว"
 
 DO NOT:
-- Change to different words ("เทียง" -> "เย็น" is WRONG!)
-- Rewrite sentences
-- Fix must look similar to original
+- Do NOT rewrite the entire sentence or change the core meaning.
+- Do NOT choose a visually similar word if it makes no sense in the context (Context is more important than visual similarity).
 
 OUTPUT JSON:
 {

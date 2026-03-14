@@ -24,8 +24,7 @@ const documentSchema = new Schema({
     content: {
         type: String,
         required: true,
-        default: "",
-        maxlength: 5000
+        default: ""
     },
     corrections: {
         type: [correctionSchema],
