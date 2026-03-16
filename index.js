@@ -33,7 +33,7 @@ app.set("trust proxy", 1);
 
 app.use(express.json());
 
-const allowedOrigins = [process.env.BASE_URL];
+const allowedOrigins = [process.env.BASE_URL, "http://localhost:5173"];
 
 app.use(cors({
     origin: function (origin, callback) {
