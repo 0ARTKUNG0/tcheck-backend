@@ -20,6 +20,8 @@ FIND AND FIX THESE ERRORS:
 DO NOT:
 - Do NOT rewrite the entire sentence or change the core meaning.
 - Do NOT choose a visually similar word if it makes no sense in the context (Context is more important than visual similarity).
+- Do NOT correct or remove the string "[---PAGE_BREAK---]". It is a page separator and must remain exactly as is in the original text. 
+- Rules: 0-based index, max 30 issues, order by start. If the text has "[---PAGE_BREAK---]", ignore those segments when finding errors.
 
 OUTPUT JSON:
 {
