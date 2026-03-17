@@ -86,15 +86,15 @@ const SignIn = async (req, res) => {
         const user = await User.findOne(query);
         if(!user){
             return res.status(401).json({
-                code: "INVALID_CREDENTIALS",
-                message: "Invalid credentials"
+                code: "NOT_FOUND",
+                message: "User not found"
             });
         }
         const isPasswordMatch = bcrypt.compareSync(user_password, user.user_password);
         if(!isPasswordMatch){
             return res.status(401).json({
-                code: "INVALID_CREDENTIALS",
-                message: "Invalid credentials"
+                code: "INVALID_PASSWORD",
+                message: "Invalid password"
             });
         }
         const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
