@@ -1,6 +1,6 @@
 const Document = require("../models/document.model.js");
 
-const MAX_CORRECTIONS = 6;
+const MAX_CORRECTIONS = 12;
 
 function validateCorrections(corrections) {
     if (!Array.isArray(corrections)) {

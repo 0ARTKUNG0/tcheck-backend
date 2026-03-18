@@ -50,10 +50,10 @@ const SignUp = async (req, res) => {
             user_email: normalizedEmail,
             user_password: hashPassword
         });
-            const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
-            res.cookie("token", token, cookieOptions);
-            await user.save();
-            return res.status(201).json({message: "User created successfully", user_name: user.user_name, user_role: user.user_role, user_email: user.user_email});
+        await user.save();
+        const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
+        res.cookie("token", token, cookieOptions);
+        return res.status(201).json({message: "User created successfully", user_name: user.user_name, user_role: user.user_role, user_email: user.user_email});
     } catch(error){
         if (error.code === 11000) {
             return res.status(409).json({
