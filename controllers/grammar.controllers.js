@@ -1,6 +1,7 @@
 const { getAIProvider } = require('../services/ai/provider');
 const User = require('../models/user.model');
 const crypto = require('crypto');
+const { chunkThaiText } = require('../utils/textSegmenter.util');
 
 function generateRequestId() {
     return crypto.randomBytes(16).toString('hex');
@@ -94,8 +95,46 @@ const checkGrammar = async (req, res) => {
         const provider = getAIProvider();
         console.log(`[${requestId}] Using AI provider: ${process.env.AI_PROVIDER || 'typhoon'}`);
 
-        const issues = await provider.checkGrammar(text, checkMode);
-        console.log(`[${requestId}] Grammar check completed. Found ${issues.length} issues`);
+        // แบ่งข้อความเป็นชิ้นเล็กๆ เพื่อประมวลผลแบบขนาน (Chunk text for parallel processing)
+        const chunks = chunkThaiText(text, 400);
+        console.log(`[${requestId}] Text split into ${chunks.length} chunks for parallel processing`);
+
+        // ประมวลผลทุก chunk พร้อมกันด้วย Promise.all (Process all chunks in parallel)
+        const chunkPromises = chunks.map((chunk, index) => {
+            console.log(`[${requestId}] Processing chunk ${index + 1}/${chunks.length} (${chunk.length} chars)`);
+            return provider.checkGrammar(chunk, checkMode);
+        });
+
+        const chunkResults = await Promise.all(chunkPromises);
+        console.log(`[${requestId}] All chunks processed. Merging results...`);
+
+        // รวมผลลัพธ์จากทุก chunk และปรับ offset ให้ตรงกับข้อความต้นฉบับ
+        // (Merge results from all chunks and adjust offsets to match original text)
+        let currentOffset = 0;
+        const allIssues = [];
+
+        for (let i = 0; i < chunkResults.length; i++) {
+            const chunkIssues = chunkResults[i] || [];
+
+            // คำนวณ offset ของ chunk นี้ (Calculate offset for this chunk)
+            // offset = ความยาวรวมของ chunks ทั้งหมดก่อนหน้านี้
+            if (i > 0) {
+                currentOffset += chunks[i - 1].length;
+            }
+
+            // ปรับ start และ end index ของแต่ละ issue โดยบวก currentOffset
+            // (Adjust start and end index of each issue by adding currentOffset)
+            const adjustedIssues = chunkIssues.map(issue => ({
+                ...issue,
+                start: issue.start + currentOffset,
+                end: issue.end + currentOffset
+            }));
+
+            allIssues.push(...adjustedIssues);
+        }
+
+        console.log(`[${requestId}] Grammar check completed. Found ${allIssues.length} issues total`);
+        const issues = allIssues;
 
         // Deduct tokens for authenticated users after successful AI response
         if (user) {
