@@ -13,7 +13,7 @@ const checkGrammar = async (req, res) => {
     console.log(`[${requestId}] Grammar check request initiated`);
 
     console.log(`[${requestId}] ⏳ กำลังแกล้งหลับ 20 วินาที...`);
-    await sleep(20000); // สั่งให้เซิร์ฟเวอร์หยุดนิ่ง 20 วินาที (20,000 ms)
+    await sleep(40000); // สั่งให้เซิร์ฟเวอร์หยุดนิ่ง 20 วินาที (20,000 ms)
     console.log(`[${requestId}] ⏰ ตื่นแล้ว! กำลังทำงานต่อ...`);
 
     try {
