@@ -114,7 +114,8 @@ const checkGrammar = async (req, res) => {
         const allIssues = [];
 
         for (let i = 0; i < chunkResults.length; i++) {
-            const chunkIssues = chunkResults[i] || [];
+            const chunkResult = chunkResults[i];
+            const chunkIssues = Array.isArray(chunkResult) ? chunkResult : (chunkResult?.issues || []);
 
             // คำนวณ offset ของ chunk นี้ (Calculate offset for this chunk)
             // offset = ความยาวรวมของ chunks ทั้งหมดก่อนหน้านี้
