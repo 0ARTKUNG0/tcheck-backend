@@ -4,6 +4,13 @@ REST API backend for tcheck built with Node.js, Express 5, and MongoDB.
 
 ## Recent Updates
 
+### April 2026 - Tone Adjustment (ปรับโทนภาษา)
+
+- ✅ **New Feature: Tone Adjustment API**: `POST /api/tone/adjust` — adjust Thai text to formal (ทางการ) or casual (เป็นกันเอง) tone using AI
+- ✅ **Safe `[---PAGE_BREAK---]` Handling**: Text is split by page break markers, each page processed independently by AI, then reassembled with markers intact
+- ✅ **AI Provider Support**: `adjustTone()` method added to all providers (Typhoon, OpenAI, LM Studio)
+- ✅ **Same Auth/Token/Rate Model**: Uses optionalAuth, token deduction, and rate limiting identical to grammar check
+
 ### March 2026 - Rate Limit Handling & Thai Text Segmentation
 
 - ✅ **Improved AI Provider Rate Limit Handling**: AI provider 429 errors now return proper HTTP 429 responses with user-friendly Thai messages instead of generic 500 errors
@@ -201,6 +208,57 @@ Base URL: `/api`
 - `500 INTERNAL_ERROR` - Unexpected server error
 
 **Note on AI_RATE_LIMIT:** When the AI provider returns a 429 status (e.g., during high concurrent usage), the API returns a user-friendly Thai message: "ระบบ AI มีผู้ใช้งานพร้อมกันจำนวนมาก โปรดรอสักครู่แล้วกดตรวจสอบใหม่อีกครั้ง" (The AI system has many concurrent users, please wait a moment and try again).
+
+### Tone Adjustment (Optional Authentication - Guests Allowed)
+
+| Method | Endpoint           | Description                       | Request Body              | Rate Limit by Role                                      |
+| ------ | ------------------ | --------------------------------- | ------------------------- | ------------------------------------------------------- |
+| POST   | `/api/tone/adjust` | Adjust Thai text tone (formal/casual) | `{ text, tone_type }` | Guest: 5/min, Free: 10/min, Pro: 30/min, Admin: 100/min |
+
+**Request:**
+
+```json
+{
+  "text": "ผมอยากไปเที่ยวทะเลครับ[---PAGE_BREAK---]ฝากซื้อกาแฟด้วยนะ",
+  "tone_type": "formal"
+}
+```
+
+**Valid `tone_type` values:**
+- `"formal"` — ทางการ (official documents, business letters, academic reports)
+- `"casual"` — เป็นกันเอง (friendly, conversational, like chatting with friends)
+
+**Success Response (200):**
+
+```json
+{
+  "adjusted_text": "กระผมมีความประสงค์จะเดินทางไปพักผ่อนยังชายทะเลครับ[---PAGE_BREAK---]รบกวนช่วยซื้อกาแฟมาให้ด้วยนะครับ",
+  "metadata": {
+    "original_length": 49,
+    "adjusted_length": 75,
+    "tone_type": "formal",
+    "pages_processed": 2,
+    "provider": "typhoon",
+    "requestId": "abc123...",
+    "userRole": "user-free",
+    "tokenUsed": 49,
+    "tokenRemaining": 3951
+  }
+}
+```
+
+**`[---PAGE_BREAK---]` Handling:**
+
+The frontend injects `[---PAGE_BREAK---]` markers to separate pages. The API splits text by this marker, sends each page to the AI independently (the AI never sees the marker), then reassembles with markers in the original positions. This guarantees 100% marker preservation.
+
+**Error Responses** (same as Grammar Check):
+
+- `400 VALIDATION_ERROR` - Invalid request (missing text, invalid tone_type)
+- `400 TOKEN_LIMIT_EXCEEDED` - Text exceeds user's token limit
+- `403 INSUFFICIENT_TOKENS` - User exceeded daily quota
+- `429 AI_RATE_LIMIT` - AI provider rate limit hit
+- `502 AI_UPSTREAM_ERROR` - AI service unavailable
+- `504 AI_TIMEOUT` - AI service timeout
 
 ### Document Management (Requires user-free, user-pro, or admin role)
 
@@ -401,6 +459,18 @@ curl -X PATCH http://localhost:5000/api/docs/{id} \
 # 6. Delete document
 curl -X DELETE http://localhost:5000/api/docs/{id} \
   -b cookies.txt
+
+# 7. Adjust tone to formal
+curl -X POST http://localhost:5000/api/tone/adjust \
+  -H "Content-Type: application/json" \
+  -d '{"text":"ผมอยากไปเที่ยวทะเล","tone_type":"formal"}' \
+  -b cookies.txt
+
+# 8. Adjust tone to casual
+curl -X POST http://localhost:5000/api/tone/adjust \
+  -H "Content-Type: application/json" \
+  -d '{"text":"ข้าพเจ้ามีความประสงค์จะสอบถามข้อมูล","tone_type":"casual"}' \
+  -b cookies.txt
 ```
 
 ## Utilities
@@ -459,3 +529,4 @@ The collections include:
 - User profile management
 - Document CRUD operations
 - AI grammar checking
+- Tone adjustment (formal/casual)

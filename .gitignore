@@ -11,3 +11,4 @@ swagger.yml
 *.claude
 *CLAUDE.md.backup
 .agent
+*changelog_*.md

@@ -23,6 +23,7 @@ const userRouter = require("./router/user.router");
 const documentRouter = require("./router/document.router");
 const grammarRouter = require("./router/grammar.router");
 const paymentRouter = require("./router/payment.router");
+const toneRouter = require("./router/tone.router");
 const { initializeCronJobs } = require("./services/cron.service");
 
 const PORT = process.env.PORT;
@@ -61,6 +62,7 @@ app.use("/api/user", userRouter);
 app.use("/api/docs", documentRouter);
 app.use("/api/grammar", grammarRouter);
 app.use("/api/payment", paymentRouter);
+app.use("/api/tone", toneRouter);
 
 mongoose.connect(MONGODB_URL)
     .then(() => {
