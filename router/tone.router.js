@@ -1,15 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const toneController = require("../controllers/tone.controller");
-const optionalAuth = require("../middleware/optionalAuth.middleware");
+const { verifyToken, hasRole } = require("../middleware/auth.middleware");
 const rateLimitMiddleware = require("../middleware/rateLimit.middleware");
 
-// Tone adjustment route - allows both guest and authenticated users
-// Guest users get limited tokens, authenticated users get more based on their tier
+// Tone adjustment route - Pro users and Admins only
+// Guest and Free users cannot access this feature (premium feature)
 router.post(
     "/adjust",
-    optionalAuth,         // Optional authentication - guests can also use
-    rateLimitMiddleware,  // Rate limiting based on role
+    verifyToken,                          // Must be logged in
+    hasRole(["user-pro", "admin"]),       // Pro or Admin only
+    rateLimitMiddleware,                  // Rate limiting based on role
     toneController.adjustTone
 );
 
