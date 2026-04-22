@@ -41,7 +41,10 @@ app.use(cors({
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            callback(new Error("Not allowed by CORS"));
+            // ใช้ custom error เพื่อให้ error handler จับได้ถูกประเภท
+            const err = new Error("Not allowed by CORS");
+            err.code = "CORS_NOT_ALLOWED";
+            callback(err);
         }
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -63,6 +66,33 @@ app.use("/api/docs", documentRouter);
 app.use("/api/grammar", grammarRouter);
 app.use("/api/payment", paymentRouter);
 app.use("/api/tone", toneRouter);
+
+// Global error handler - ดัก error ทุกตัวก่อนตอบ client
+// ต้องอยู่ท้ายสุดหลัง router ทั้งหมด
+app.use((err, req, res, next) => {
+    // CORS error - origin ไม่ได้รับอนุญาต
+    if (err && err.code === "CORS_NOT_ALLOWED") {
+        return res.status(403).json({
+            code: "CORS_NOT_ALLOWED",
+            message: "Origin not allowed"
+        });
+    }
+
+    // JSON parse error (body ไม่ใช่ JSON ที่ถูกต้อง)
+    if (err && err.type === "entity.parse.failed") {
+        return res.status(400).json({
+            code: "INVALID_JSON",
+            message: "Request body is not valid JSON"
+        });
+    }
+
+    // Error อื่นๆ ที่ไม่คาดคิด - log แต่ไม่เปิดเผย detail ให้ client
+    console.error("[UNHANDLED ERROR]", err);
+    return res.status(500).json({
+        code: "INTERNAL_ERROR",
+        message: "Internal server error"
+    });
+});
 
 mongoose.connect(MONGODB_URL)
     .then(() => {

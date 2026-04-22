@@ -28,6 +28,14 @@ const SignUp = async (req, res) => {
         });
     }
 
+    // ป้องกัน NoSQL injection: ต้องเป็น string เท่านั้น
+    if (typeof user_name !== "string" || typeof user_email !== "string" || typeof user_password !== "string") {
+        return res.status(400).json({
+            code: "VALIDATION_ERROR",
+            message: "Invalid input format"
+        });
+    }
+
     if (!isValidEmail(user_email)) {
         return res.status(400).json({
             code: "VALIDATION_ERROR",
@@ -76,6 +84,18 @@ const SignIn = async (req, res) => {
         return res.status(400).json({
             code: "VALIDATION_ERROR",
             message: "Email or username and password are required"
+        });
+    }
+
+    // ป้องกัน NoSQL injection: ถ้ามีค่า ต้องเป็น string เท่านั้น
+    if (
+        (user_email !== undefined && typeof user_email !== "string") ||
+        (user_name !== undefined && typeof user_name !== "string") ||
+        typeof user_password !== "string"
+    ) {
+        return res.status(400).json({
+            code: "VALIDATION_ERROR",
+            message: "Invalid input format"
         });
     }
 
@@ -146,6 +166,13 @@ const updateUsername = async (req, res) => {
         return res.status(400).json({
             code: "VALIDATION_ERROR",
             message: "Username is required"
+        });
+    }
+    // ป้องกัน NoSQL injection: ต้องเป็น string เท่านั้น
+    if (typeof user_name !== "string") {
+        return res.status(400).json({
+            code: "VALIDATION_ERROR",
+            message: "Invalid input format"
         });
     }
     try{

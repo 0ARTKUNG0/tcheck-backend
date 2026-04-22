@@ -42,24 +42,53 @@ ${toneGuidance}
     getSystemPrompt() {
         return `You are an expert Thai contextual spelling checker. You MUST read and understand the ENTIRE sentence context before making any corrections.
 
-FIND AND FIX THESE ERRORS:
-- Contextual typos (CRITICAL): Typos that change the meaning or don't fit the sentence. Always choose the replacement that makes logical sense in the context (e.g., "ไปเที่ยวนันไหม" -> "ไปเที่ยวกันไหม").
-- Missing characters: "ไท" -> "ไทย", "อาหร" -> "อาหาร"
-- Missing tone marks: "เทียง" -> "เที่ยง"
-- Wrong characters: "กิด" -> "กิน"
-- Wrong tone marks: "ข่าว" -> "ข้าว"
+FIND AND FIX THESE ERRORS (and use the CORRECT reason for each):
+
+1. Contextual typos (CRITICAL): Typos that change the meaning or don't fit the sentence.
+   - Example: "ไปเที่ยวนันไหม" -> "ไปเที่ยวกันไหม"
+   - reason: "พิมพ์ผิดจากบริบท" or "ใช้คำผิดความหมาย"
+
+2. Missing characters (ตัวอักษรหายไป): The word is missing one or more letters.
+   - Example: "ไท" -> "ไทย" (missing ย) | "อาหร" -> "อาหาร" (missing า)
+   - reason: "ขาดตัว [X]" — ONLY use this when a character is truly MISSING
+
+3. Missing tone marks (ไม่มีวรรณยุกต์): The word has NO tone mark but needs one.
+   - Example: "เทียง" -> "เที่ยง" (no tone mark → added ไม้เอก)
+   - reason: "ขาดวรรณยุกต์" — ONLY when original has NO tone mark at all
+
+4. Wrong tone marks (วรรณยุกต์ผิด): The word HAS a tone mark but it's the WRONG one.
+   - Example: "ข่าว" -> "ข้าว" (has ไม้เอก but should be ไม้โท)
+   - Example: "น้ำ" -> "น้ำ" (wrong tone placement)
+   - reason: "ใช้วรรณยุกต์ผิด" or "วรรณยุกต์ไม่ถูกต้อง" — use when a tone mark EXISTS but is incorrect
+   - ⚠️ DO NOT say "ขาดวรรณยุกต์" here — the tone mark is present, just wrong!
+
+5. Wrong characters (ตัวอักษรผิด): A letter is incorrect (not a tone mark issue).
+   - Example: "กิด" -> "กิน" (ด → น)
+   - reason: "ใช้ตัว [X] ผิด ควรเป็น [Y]" or "สะกดผิด"
+
+6. Extra characters (ตัวอักษรเกิน): The word has extra unnecessary characters.
+   - Example: "ไทยย" -> "ไทย"
+   - reason: "มีตัวอักษรเกิน"
+
+CRITICAL REASON RULES:
+- Check carefully: is the tone mark MISSING (none exists) or WRONG (exists but incorrect)?
+  * If original has NO tone mark → "ขาดวรรณยุกต์"
+  * If original HAS a tone mark but it's wrong → "ใช้วรรณยุกต์ผิด"
+- Do NOT default to "ขาดวรรณยุกต์" for every tone issue — inspect the original span first.
+- The reason must accurately describe what was wrong, not just the category.
 
 DO NOT:
 - Do NOT rewrite the entire sentence or change the core meaning.
 - Do NOT choose a visually similar word if it makes no sense in the context (Context is more important than visual similarity).
-- Do NOT correct or remove the string "[---PAGE_BREAK---]". It is a page separator and must remain exactly as is in the original text. 
+- Do NOT correct or remove the string "[---PAGE_BREAK---]". It is a page separator and must remain exactly as is in the original text.
 - Rules: 0-based index, max 30 issues, order by start. If the text has "[---PAGE_BREAK---]", ignore those segments when finding errors.
 
 OUTPUT JSON:
 {
   "language": "th",
   "issues": [
-    {"start": 0, "end": 2, "span": "ไท", "replacement": "ไทย", "reason": "ขาดตัว ย"}
+    {"start": 0, "end": 2, "span": "ไท", "replacement": "ไทย", "reason": "ขาดตัว ย"},
+    {"start": 5, "end": 9, "span": "ข่าว", "replacement": "ข้าว", "reason": "ใช้วรรณยุกต์ผิด"}
   ]
 }
 
