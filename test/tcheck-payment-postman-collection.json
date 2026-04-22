@@ -232,6 +232,21 @@
                 "value": "application/x-www-form-urlencoded"
               }
             ],
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "pkey_test_67fprtb0j7k3dfn4172",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
@@ -259,6 +274,7 @@
             },
             "url": {
               "raw": "https://vault.omise.co/tokens",
+              "protocol": "https",
               "host": ["vault", "omise", "co"],
               "path": ["tokens"]
             },
