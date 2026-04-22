@@ -32,6 +32,19 @@ const userSchema = new Schema({
                 return parseInt(process.env.TOKEN_LIMIT_USER_FREE) || 4000;
             }
         }
+    },
+    pro_expires_at: {
+        type: Date,
+        default: null
+    },
+    subscription_status: {
+        type: String,
+        enum: ["none", "active", "expired", "cancelled"],
+        default: "none"
+    },
+    omise_customer_id: {
+        type: String,
+        default: null
     }
 },
     { timestamps: true }
