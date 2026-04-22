@@ -1,0 +1,399 @@
+{
+  "info": {
+    "_postman_id": "tcheck-payment-api-v1",
+    "name": "tcheck Payment API - Ngrok Test",
+    "description": "Postman collection for testing tcheck backend payment API through ngrok. Includes Auth, PromptPay, Card, and Webhook endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_name\": \"testuser\",\n  \"user_email\": \"test@example.com\",\n  \"user_password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/user/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user", "signup"]
+            },
+            "description": "Register a new test user"
+          },
+          "response": []
+        },
+        {
+          "name": "Signin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_email\": \"test@example.com\",\n  \"user_password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/user/signin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user", "signin"]
+            },
+            "description": "Login and get JWT token (sent in cookie). Copy token from response cookies to {{token}} variable."
+          },
+          "response": []
+        },
+        {
+          "name": "Signout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user/signout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user", "signout"]
+            },
+            "description": "Logout user"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints"
+    },
+    {
+      "name": "2. User",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "description": "Get current user profile"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user/check-token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user", "check-token"]
+            },
+            "description": "Check remaining AI tokens"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Username",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_name\": \"newname\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/user/update-username",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user", "update-username"]
+            },
+            "description": "Update user name"
+          },
+          "response": []
+        }
+      ],
+      "description": "User management endpoints"
+    },
+    {
+      "name": "3. PromptPay",
+      "item": [
+        {
+          "name": "Create PromptPay QR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500,\n  \"description\": \"Test PromptPay Payment\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/promptpay/create",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "promptpay", "create"]
+            },
+            "description": "Create a PromptPay QR code. Save payment_id from response to {{payment_id}} variable."
+          },
+          "response": []
+        },
+        {
+          "name": "Get PromptPay Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/payment/promptpay/{{payment_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "promptpay", "{{payment_id}}"]
+            },
+            "description": "Check PromptPay payment status"
+          },
+          "response": []
+        },
+        {
+          "name": "PromptPay History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/payment/promptpay/history",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "promptpay", "history"]
+            },
+            "description": "Get all PromptPay payments for current user"
+          },
+          "response": []
+        }
+      ],
+      "description": "PromptPay QR payment endpoints"
+    },
+    {
+      "name": "4. Card",
+      "item": [
+        {
+          "name": "Create Card Token (via Omise Vault)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "card[name]",
+                  "value": "Test User"
+                },
+                {
+                  "key": "card[number]",
+                  "value": "4242424242424242"
+                },
+                {
+                  "key": "card[expiration_month]",
+                  "value": "12"
+                },
+                {
+                  "key": "card[expiration_year]",
+                  "value": "2027"
+                },
+                {
+                  "key": "card[security_code]",
+                  "value": "123"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://vault.omise.co/tokens",
+              "host": ["vault", "omise", "co"],
+              "path": ["tokens"]
+            },
+            "description": "Create a card token using Omise Vault API. Auth: Basic Auth with username = Omise Public Key, password = empty. Save token ID to {{card_token}} variable."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Card Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000,\n  \"description\": \"Test Card Payment\",\n  \"card_token\": \"{{card_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/card/create",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "card", "create"]
+            },
+            "description": "Charge a card using the token from previous step"
+          },
+          "response": []
+        },
+        {
+          "name": "Card Payment History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/payment/card/history",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "card", "history"]
+            },
+            "description": "Get all card payments for current user"
+          },
+          "response": []
+        }
+      ],
+      "description": "Card payment endpoints"
+    },
+    {
+      "name": "5. Webhook",
+      "item": [
+        {
+          "name": "Omise Webhook (Simulate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"charge.complete\",\n  \"data\": {\n    \"id\": \"{{charge_id}}\",\n    \"status\": \"successful\",\n    \"amount\": 50000,\n    \"currency\": \"THB\",\n    \"paid\": true,\n    \"paid_at\": \"2026-04-22T07:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/webhook/omise",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhook", "omise"]
+            },
+            "description": "Simulate Omise webhook. No auth required. Set {{charge_id}} to the omise_charge_id from PromptPay/Card create response."
+          },
+          "response": []
+        },
+        {
+          "name": "Webhook Test (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/webhook/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhook", "test"]
+            },
+            "description": "Test if webhook endpoint is reachable"
+          },
+          "response": []
+        }
+      ],
+      "description": "Webhook endpoints (no authentication)"
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://1891-2001-fb1-17e-f6f9-a56f-1a2c-d672-71ba.ngrok-free.app",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjllODc3MWRhNTQ1ZThmNDJiMDc4ZTQyIiwidXNlcl9lbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJ1c2VyX25hbWUiOiJ0ZXN0dXNlciIsImlhdCI6MTc3Njg0MjUyNSwiZXhwIjoxNzc2ODUzMzI1fQ.fdz425_hJhBQPlFTiSFFP6ggApG5tQRFsUoRGx6wSrs",
+      "type": "string"
+    },
+    {
+      "key": "payment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "charge_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "card_token",
+      "value": "tokn_test_67fr34h0vpc004s7pzh",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
+}

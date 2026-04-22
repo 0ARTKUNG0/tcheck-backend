@@ -3,9 +3,17 @@ const Payment = require("../models/payment.model.js");
 // Webhook handler for Omise events
 const handleOmiseWebhook = async (req, res) => {
     try {
+        console.log("=== OMISE WEBHOOK RECEIVED ===");
+        console.log("Headers:", JSON.stringify(req.headers));
+        console.log("Body:", req.body);
+        
+        if (!req.body || typeof req.body !== 'object') {
+            console.log("⚠️ No body received, returning OK to prevent retries");
+            return res.status(200).send("OK");
+        }
+        
         const { key, data } = req.body;
         
-        console.log("=== OMISE WEBHOOK RECEIVED ===");
         console.log("Event:", key);
         console.log("Charge ID:", data?.id);
         console.log("Status:", data?.status);
