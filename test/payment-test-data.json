@@ -1,0 +1,253 @@
+{
+  "_info": {
+    "description": "Example JSON payloads for Payment API testing",
+    "base_url": "http://localhost:5000",
+    "auth": "Bearer token from /api/user/signin"
+  },
+  "endpoints": {
+    "webhook_test": {
+      "method": "GET",
+      "url": "/api/webhook/test",
+      "auth_required": false,
+      "request_body": null,
+      "expected_response": {
+        "message": "Webhook endpoint is working",
+        "timestamp": "2026-04-17T10:00:00.000Z"
+      }
+    },
+    "webhook_omise": {
+      "method": "POST",
+      "url": "/api/webhook/omise",
+      "auth_required": false,
+      "request_body": {
+        "key": "charge.complete",
+        "data": {
+          "id": "chrg_test_xxxxxxxxxxxxxxxxxxx",
+          "status": "successful",
+          "amount": 10000,
+          "currency": "THB",
+          "paid": true
+        }
+      },
+      "expected_response": "OK"
+    },
+    "promptpay_create": {
+      "method": "POST",
+      "url": "/api/payment/promptpay/create",
+      "auth_required": true,
+      "headers": {
+        "Authorization": "Bearer <your-jwt-token>",
+        "Content-Type": "application/json"
+      },
+      "request_body": {
+        "amount": 100,
+        "description": "Test PromptPay payment"
+      },
+      "expected_response": {
+        "message": "PromptPay payment created successfully. Please scan the QR code to pay.",
+        "payment": {
+          "id": "payment_object_id",
+          "amount": 100,
+          "description": "Test PromptPay payment",
+          "qr_code_url": "https://api.omise.co/charges/.../qr.png",
+          "omise_charge_id": "chrg_test_xxx",
+          "payment_method": "promptpay",
+          "status": "pending",
+          "expires_at": "2026-04-18T10:00:00.000Z"
+        }
+      }
+    },
+    "promptpay_history": {
+      "method": "GET",
+      "url": "/api/payment/promptpay/history",
+      "auth_required": true,
+      "headers": {
+        "Authorization": "Bearer <your-jwt-token>"
+      },
+      "request_body": null,
+      "expected_response": {
+        "message": "PromptPay payments retrieved successfully",
+        "count": 2,
+        "payments": [
+          {
+            "_id": "payment_id_1",
+            "user_id": "user_object_id",
+            "amount": 100,
+            "description": "Test PromptPay payment",
+            "payment_method": "promptpay",
+            "qr_code_url": "https://api.omise.co/...",
+            "omise_charge_id": "chrg_test_xxx",
+            "status": "pending",
+            "expires_at": "2026-04-18T10:00:00.000Z",
+            "createdAt": "2026-04-17T10:00:00.000Z"
+          }
+        ]
+      }
+    },
+    "promptpay_get_by_id": {
+      "method": "GET",
+      "url": "/api/payment/promptpay/:id",
+      "auth_required": true,
+      "headers": {
+        "Authorization": "Bearer <your-jwt-token>"
+      },
+      "request_body": null,
+      "path_params": {
+        ":id": "payment_object_id"
+      },
+      "expected_response": {
+        "message": "PromptPay payment retrieved successfully",
+        "payment": {
+          "_id": "payment_object_id",
+          "amount": 100,
+          "status": "pending",
+          "qr_code_url": "https://api.omise.co/..."
+        }
+      }
+    },
+    "promptpay_check_status": {
+      "method": "GET",
+      "url": "/api/payment/promptpay/status/:id",
+      "auth_required": true,
+      "headers": {
+        "Authorization": "Bearer <your-jwt-token>"
+      },
+      "request_body": null,
+      "path_params": {
+        ":id": "payment_object_id"
+      },
+      "expected_response": {
+        "success": true,
+        "status": "pending",
+        "paid": false,
+        "amount": 100,
+        "qr_code_url": "https://api.omise.co/..."
+      }
+    },
+    "card_create": {
+      "method": "POST",
+      "url": "/api/payment/card/create",
+      "auth_required": true,
+      "note": "card_token ต้องสร้างจาก Omise.js ฝั่ง Frontend (หรือใช้ tokn_test สำหรับทดสอบ)",
+      "headers": {
+        "Authorization": "Bearer <your-jwt-token>",
+        "Content-Type": "application/json"
+      },
+      "request_body": {
+        "amount": 150,
+        "description": "Test card payment",
+        "card_token": "tokn_test_xxxxxxxxxxxxxxxxxxx"
+      },
+      "expected_response": {
+        "message": "Card payment successful",
+        "payment": {
+          "id": "payment_object_id",
+          "amount": 150,
+          "description": "Test card payment",
+          "omise_charge_id": "chrg_test_xxx",
+          "payment_method": "card",
+          "card_brand": "Visa",
+          "card_last_digits": "4242",
+          "status": "paid",
+          "paid_at": "2026-04-17T10:00:00.000Z"
+        }
+      }
+    },
+    "card_charge": {
+      "method": "POST",
+      "url": "/api/payment/card/charge",
+      "auth_required": true,
+      "note": "endpoint นี้ amount เป็นสตางค์ (frontend ส่งมาแล้ว), token = card_token",
+      "headers": {
+        "Authorization": "Bearer <your-jwt-token>",
+        "Content-Type": "application/json"
+      },
+      "request_body": {
+        "amount": 15000,
+        "token": "tokn_test_xxxxxxxxxxxxxxxxxxx",
+        "description": "Test card charge"
+      },
+      "expected_response": {
+        "success": true,
+        "message": "Payment successful",
+        "charge_id": "chrg_test_xxx",
+        "status": "successful",
+        "amount": 15000,
+        "currency": "THB"
+      }
+    },
+    "card_history": {
+      "method": "GET",
+      "url": "/api/payment/card/history",
+      "auth_required": true,
+      "headers": {
+        "Authorization": "Bearer <your-jwt-token>"
+      },
+      "request_body": null,
+      "expected_response": {
+        "message": "Card payments retrieved successfully",
+        "count": 1,
+        "payments": [
+          {
+            "_id": "payment_id",
+            "amount": 150,
+            "payment_method": "card",
+            "card_brand": "Visa",
+            "card_last_digits": "4242",
+            "status": "paid",
+            "createdAt": "2026-04-17T10:00:00.000Z"
+          }
+        ]
+      }
+    },
+    "card_get_by_id": {
+      "method": "GET",
+      "url": "/api/payment/card/:id",
+      "auth_required": true,
+      "headers": {
+        "Authorization": "Bearer <your-jwt-token>"
+      },
+      "request_body": null,
+      "path_params": {
+        ":id": "payment_object_id"
+      },
+      "expected_response": {
+        "message": "Card payment retrieved successfully",
+        "payment": {
+          "_id": "payment_object_id",
+          "amount": 150,
+          "payment_method": "card",
+          "status": "paid"
+        }
+      }
+    }
+  },
+  "auth_example": {
+    "signup": {
+      "method": "POST",
+      "url": "/api/user/signup",
+      "request_body": {
+        "user_name": "testuser",
+        "user_email": "test@example.com",
+        "user_password": "password123"
+      }
+    },
+    "signin": {
+      "method": "POST",
+      "url": "/api/user/signin",
+      "request_body": {
+        "user_email": "test@example.com",
+        "user_password": "password123"
+      },
+      "note": "Token จะอยู่ใน cookie หรือสร้างเองจาก JWT (ใช้ Authorization: Bearer <token> ใน header)"
+    }
+  },
+  "omise_test_card": {
+    "note": "ข้อมูลบัตรทดสอบของ Omise (ใช้ใน test mode เท่านั้น)",
+    "card_number": "4242 4242 4242 4242",
+    "expiry_month": "12",
+    "expiry_year": "2027",
+    "security_code": "123",
+    "name": "Test User"
+  }
+}
