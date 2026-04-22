@@ -23,7 +23,7 @@ const CONFIG = {
     user_password: "password123"
   },
   // ถ้ามี JWT token อยู่แล้ว ใส่ตรงนี้ได้เลย (สคริปต์จะไม่ login)
-  existingToken: null,
+  existingToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjllODVlZmY1NjZkMjBlYTYzNmMyZTliIiwidXNlcl9lbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJ1c2VyX25hbWUiOiJ0ZXN0dXNlciIsImlhdCI6MTc3NjgzNjM1MSwiZXhwIjoxNzc2ODQ3MTUxfQ.Qx9d7irNv6TXtBB9Tu9nFrG9px8FdknSg4KODDeIUPg",
   // Card token สำหรับทดสอบ Card Payment (สร้างจาก Omise.js frontend)
   // ถ้าไม่มี สคริปต์จะข้ามการทดสอบ Card
   cardToken: null
