@@ -1,10 +1,43 @@
 const Document = require("../models/document.model.js");
 
-const MAX_CORRECTIONS = 6;
+const MAX_CORRECTIONS = 12;
 
-// Create new document
+function validateCorrections(corrections) {
+    if (!Array.isArray(corrections)) {
+        return { valid: false, error: "corrections must be an array" };
+    }
+
+    for (let i = 0; i < corrections.length; i++) {
+        const corr = corrections[i];
+        if (typeof corr !== 'object' || corr === null) {
+            return { valid: false, error: `correction[${i}] must be an object` };
+        }
+        if (typeof corr.span !== 'string' || !corr.span) {
+            return { valid: false, error: `correction[${i}].span must be a non-empty string` };
+        }
+        if (typeof corr.replacement !== 'string' || !corr.replacement) {
+            return { valid: false, error: `correction[${i}].replacement must be a non-empty string` };
+        }
+        if (typeof corr.reason !== 'string' || !corr.reason) {
+            return { valid: false, error: `correction[${i}].reason must be a non-empty string` };
+        }
+    }
+
+    return { valid: true };
+}
+
 const createDocument = async (req, res) => {
     const { title, content, corrections } = req.body;
+
+    if (corrections !== undefined) {
+        const validation = validateCorrections(corrections);
+        if (!validation.valid) {
+            return res.status(400).json({
+                code: "VALIDATION_ERROR",
+                message: validation.error
+            });
+        }
+    }
 
     try {
         const document = new Document({
@@ -36,12 +69,42 @@ const createDocument = async (req, res) => {
     }
 };
 
-// List user's documents
 const getDocuments = async (req, res) => {
     const { page = 1, limit = 20, sort = "-updatedAt" } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+
+    if (isNaN(pageNum) || pageNum < 1) {
+        return res.status(400).json({
+            code: "VALIDATION_ERROR",
+            message: "page must be a positive integer"
+        });
+    }
+
+    if (isNaN(limitNum) || limitNum < 1) {
+        return res.status(400).json({
+            code: "VALIDATION_ERROR",
+            message: "limit must be a positive integer"
+        });
+    }
+
+    if (limitNum > 100) {
+        return res.status(400).json({
+            code: "VALIDATION_ERROR",
+            message: "limit cannot exceed 100"
+        });
+    }
+
+    const allowedSorts = ["updatedAt", "-updatedAt", "createdAt", "-createdAt", "title", "-title"];
+    if (!allowedSorts.includes(sort)) {
+        return res.status(400).json({
+            code: "VALIDATION_ERROR",
+            message: `sort must be one of: ${allowedSorts.join(", ")}`
+        });
+    }
+
     try {
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
 
         const documents = await Document.find({ ownerId: req.user._id })
@@ -102,29 +165,48 @@ const getDocument = async (req, res) => {
     }
 };
 
-// Update document
 const updateDocument = async (req, res) => {
     const { id } = req.params;
     const { title, content, corrections } = req.body;
 
-    // Validate: title cannot be empty string if provided
-    if (title !== undefined && title.trim() === "") {
-        return res.status(400).json({ message: "Title cannot be empty", code: "VALIDATION_ERROR" });
+    if (title !== undefined) {
+        if (typeof title !== 'string') {
+            return res.status(400).json({
+                code: "VALIDATION_ERROR",
+                message: "title must be a string"
+            });
+        }
+        if (title.trim() === "") {
+            return res.status(400).json({
+                code: "VALIDATION_ERROR",
+                message: "title cannot be empty"
+            });
+        }
     }
+
+    if (corrections !== undefined) {
+        const validation = validateCorrections(corrections);
+        if (!validation.valid) {
+            return res.status(400).json({
+                code: "VALIDATION_ERROR",
+                message: validation.error
+            });
+        }
+    }
+
     try {
         const document = await Document.findById(id);
         if (!document) {
-            return res.status(404).json({ message: "Document not found", code: "NOT_FOUND" });
+            return res.status(404).json({ code: "NOT_FOUND", message: "Document not found" });
         }
-        // Check ownership
+
         if (document.ownerId.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: "Access denied", code: "FORBIDDEN" });
+            return res.status(403).json({ code: "FORBIDDEN", message: "Access denied" });
         }
-        // Update fields
+
         if (title !== undefined) document.title = title;
         if (content !== undefined) document.content = content;
         if (corrections !== undefined) {
-            // Append new corrections and keep only the latest 6
             const merged = [...document.corrections, ...corrections];
             document.corrections = merged.slice(-MAX_CORRECTIONS);
         }

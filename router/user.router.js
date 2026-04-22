@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const userController = require("../controllers/user.controllers");
+const userController = require("../controllers/user.controller");
 const { verifyToken, isAdmin, hasRole } = require("../middleware/auth.middleware");
 
 //POST /api/user/signup - สมัครสมาชิกผู้ใช้ใหม่
@@ -13,5 +13,7 @@ router.post("/signout", userController.signOut);
 router.post("/update-username", verifyToken, userController.updateUsername);
 //GET /api/user/profile - ดูโปรไฟล์ผู้ใช้
 router.get("/profile", verifyToken, userController.getUserProfile);
+//GET /api/user/check-token - ตรวจสอบโทเคนคงเหลือ
+router.get("/check-token", verifyToken, userController.checkToken);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const grammarController = require("../controllers/grammar.controllers");
+const grammarController = require("../controllers/grammar.controller");
 const optionalAuth = require("../middleware/optionalAuth.middleware");
 const rateLimitMiddleware = require("../middleware/rateLimit.middleware");
 

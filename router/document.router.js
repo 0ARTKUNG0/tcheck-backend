@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const documentController = require("../controllers/document.controllers");
+const documentController = require("../controllers/document.controller");
 const { verifyToken, hasRole } = require("../middleware/auth.middleware");
 
 // All routes require authentication and user role (user-free, user-pro, or admin)

@@ -117,6 +117,10 @@ class OpenAIProvider extends BaseAIProvider {
             if (error.code === 'ECONNREFUSED') {
                 throw new Error("AI_UPSTREAM_ERROR");
             }
+            if (error.response?.status === 429) {
+                console.warn("API Rate Limit Hit (429):", error.response?.data);
+                throw new Error("AI_RATE_LIMIT");
+            }
             if (error.response?.status >= 500) {
                 throw new Error("AI_UPSTREAM_ERROR");
             }
@@ -144,6 +148,74 @@ class OpenAIProvider extends BaseAIProvider {
         }
 
         return this.normalizeResponse(parsedResponse, text);
+    }
+
+    async adjustTone(text, tone_type) {
+        try {
+            const messages = [
+                {
+                    role: "system",
+                    content: this.getToneSystemPrompt(tone_type)
+                },
+                {
+                    role: "user",
+                    content: text
+                }
+            ];
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (this.config.apiKey) {
+                headers['Authorization'] = `Bearer ${this.config.apiKey}`;
+            }
+
+            const baseURL = this.config.baseURL.replace(/\/+$/, '');
+            const endpoint = baseURL.includes('/v1') || baseURL.includes('/v1beta')
+                ? `${baseURL}/chat/completions`
+                : `${baseURL}/v1/chat/completions`;
+
+            const response = await axios.post(
+                endpoint,
+                {
+                    model: this.config.model,
+                    messages,
+                    temperature: 0.3,
+                    max_tokens: 4000
+                },
+                {
+                    headers,
+                    timeout: this.config.timeout
+                }
+            );
+
+            const content = response.data?.choices?.[0]?.message?.content;
+            if (!content) {
+                throw new Error("No content in API response");
+            }
+
+            // Strip markdown fences if the model wraps output
+            return content.replace(/^```\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
+        } catch (error) {
+            if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+                throw new Error("AI_TIMEOUT");
+            }
+            if (error.code === 'ECONNREFUSED') {
+                throw new Error("AI_UPSTREAM_ERROR");
+            }
+            if (error.response?.status === 429) {
+                console.warn("API Rate Limit Hit (429):", error.response?.data);
+                throw new Error("AI_RATE_LIMIT");
+            }
+            if (error.response?.status >= 500) {
+                throw new Error("AI_UPSTREAM_ERROR");
+            }
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                console.error("API Auth Error:", error.response?.data);
+                throw new Error("AI_UPSTREAM_ERROR");
+            }
+            console.error("API Error:", error.message, error.response?.data);
+            throw error;
+        }
     }
 }
 

@@ -8,4 +8,7 @@ postman
 .postman
 docs
 swagger.yml
-.claude
+*.claude
+*CLAUDE.md.backup
+.agent
+*changelog_*.md

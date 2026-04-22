@@ -61,6 +61,65 @@ class TyphoonProvider extends BaseAIProvider {
             if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
                 throw new Error("AI_TIMEOUT");
             }
+            if (error.response?.status === 429) {
+                console.warn("Typhoon API Rate Limit Hit (429):", error.response?.data);
+                throw new Error("AI_RATE_LIMIT");
+            }
+            if (error.response?.status >= 500) {
+                throw new Error("AI_UPSTREAM_ERROR");
+            }
+            if (error.response?.status === 400) {
+                console.error("Typhoon API 400 Error:", JSON.stringify(error.response.data, null, 2));
+                throw new Error("AI_UPSTREAM_ERROR");
+            }
+            console.error("Typhoon API Error:", error.message, error.response?.data);
+            throw error;
+        }
+    }
+
+    async adjustTone(text, tone_type) {
+        try {
+            const response = await axios.post(
+                `${this.config.baseURL}/v1/chat/completions`,
+                {
+                    model: process.env.TYPHOON_MODEL,
+                    messages: [
+                        {
+                            role: "system",
+                            content: this.getToneSystemPrompt(tone_type)
+                        },
+                        {
+                            role: "user",
+                            content: text
+                        }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 4000
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${this.config.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: this.config.timeout
+                }
+            );
+
+            const content = response.data?.choices?.[0]?.message?.content;
+            if (!content) {
+                throw new Error("No content in Typhoon response");
+            }
+
+            return content.trim();
+
+        } catch (error) {
+            if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+                throw new Error("AI_TIMEOUT");
+            }
+            if (error.response?.status === 429) {
+                console.warn("Typhoon API Rate Limit Hit (429):", error.response?.data);
+                throw new Error("AI_RATE_LIMIT");
+            }
             if (error.response?.status >= 500) {
                 throw new Error("AI_UPSTREAM_ERROR");
             }
