@@ -1,4 +1,5 @@
 const Payment = require("../models/payment.model.js");
+const { grantProAccess } = require("../utils/subscription.util.js");
 
 // Webhook handler for Omise events
 const handleOmiseWebhook = async (req, res) => {
@@ -31,6 +32,16 @@ const handleOmiseWebhook = async (req, res) => {
             
             if (payment) {
                 console.log(`✅ Payment ${payment._id} updated to ${payment.status}`);
+                
+                // Grant Pro access when payment is successful
+                if (data.status === "successful") {
+                    try {
+                        await grantProAccess(payment.user_id, 30);
+                        console.log(`✅ Pro access granted to user ${payment.user_id}`);
+                    } catch (proError) {
+                        console.error(`❌ Failed to grant Pro access:`, proError.message);
+                    }
+                }
             } else {
                 console.log(`⚠️ No payment found for charge ID: ${data.id}`);
             }
