@@ -2,6 +2,7 @@ const { getAIProvider } = require('../services/ai/provider');
 const User = require('../models/user.model');
 const crypto = require('crypto');
 const { chunkThaiText } = require('../utils/textSegmenter.util');
+const { logUsage, logActivity } = require('../utils/logger.util.js');
 
 function generateRequestId() {
     return crypto.randomBytes(16).toString('hex');
@@ -81,6 +82,13 @@ const checkGrammar = async (req, res) => {
             // Check if user has enough tokens
             if (user.remaining_tokens < text.length) {
                 console.log(`[${requestId}] Insufficient tokens. User has ${user.remaining_tokens}, needs ${text.length}`);
+                // Log activity: token limit hit (สำหรับ admin dashboard)
+                logActivity({
+                    user_id: user._id,
+                    user_name: user.user_name,
+                    type: "token_limit_hit",
+                    metadata: { remaining: user.remaining_tokens, required: text.length }
+                });
                 return res.status(403).json({
                     code: "INSUFFICIENT_TOKENS",
                     message: "Insufficient tokens. Please upgrade your plan.",
@@ -142,6 +150,14 @@ const checkGrammar = async (req, res) => {
             user.remaining_tokens -= text.length;
             await user.save();
             console.log(`[${requestId}] Deducted ${text.length} tokens. New balance: ${user.remaining_tokens}`);
+            // Log usage สำหรับ admin dashboard (fire-and-forget)
+            logUsage({
+                user_id: user._id,
+                action: "grammar_check",
+                tokens_used: text.length,
+                issues_found: issues.length,
+                text_length: text.length
+            });
         }
 
         return res.status(200).json({

@@ -1,6 +1,7 @@
 const User = require("../models/user.model.js");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { logActivity } = require("../utils/logger.util.js");
 const SALT = bcrypt.genSaltSync(10);
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -59,6 +60,8 @@ const SignUp = async (req, res) => {
             user_password: hashPassword
         });
         await user.save();
+        // Log activity สำหรับ admin dashboard
+        logActivity({ user_id: user._id, user_name: user.user_name, type: "user_signup" });
         const token = jwt.sign({user_id: user._id,user_email: user.user_email, user_name: user.user_name}, JWT_SECRET, {expiresIn: "3h"});
         res.cookie("token", token, cookieOptions);
         return res.status(201).json({message: "User created successfully", user_name: user.user_name, user_role: user.user_role, user_email: user.user_email});

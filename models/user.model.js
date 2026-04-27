@@ -45,6 +45,24 @@ const userSchema = new Schema({
     omise_customer_id: {
         type: String,
         default: null
+    },
+    // สถานะแบน - true = ถูกแบน, ไม่สามารถใช้งาน API ได้
+    is_banned: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    // Soft delete - true = ถูกลบแล้ว, ไม่แสดงใน query ปกติ
+    is_deleted: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    // วัน/เวลาที่ใช้งานล่าสุด (อัปเดตจาก middleware)
+    last_active_at: {
+        type: Date,
+        default: Date.now,
+        index: true
     }
 },
     { timestamps: true }

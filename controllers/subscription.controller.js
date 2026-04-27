@@ -1,5 +1,6 @@
 const User = require("../models/user.model.js");
 const { grantProAccess, checkAndUpdateSubscriptionStatus } = require("../utils/subscription.util.js");
+const { logActivity } = require("../utils/logger.util.js");
 
 // GET /api/subscription/status
 const getSubscriptionStatus = async (req, res) => {
@@ -37,6 +38,14 @@ const grantPro = async (req, res) => {
         }
 
         const user = await grantProAccess(user_id, days);
+
+        // Log activity สำหรับ admin dashboard (manual grant by admin)
+        logActivity({
+            user_id: user._id,
+            user_name: user.user_name,
+            type: "user_upgraded_pro",
+            metadata: { days, source: "admin_manual_grant", granted_by: req.user?._id }
+        });
 
         res.status(200).json({
             message: "Pro access granted successfully",

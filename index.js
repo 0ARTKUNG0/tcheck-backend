@@ -29,6 +29,8 @@ const promptpayRouter = require("./router/promptpay.router");
 const cardRouter = require("./router/card.router");
 const webhookRouter = require("./router/webhook.router");
 const subscriptionRouter = require("./router/subscription.router");
+const adminDashboardRouter = require("./router/adminDashboard.router");
+const userDashboardRouter = require("./router/userDashboard.router");
 
 // Services
 const { initializeCronJobs } = require("./services/cron.service");
@@ -77,6 +79,8 @@ app.use("/api/payment/promptpay", promptpayRouter);
 app.use("/api/payment/card", cardRouter);
 app.use("/api/webhook", webhookRouter);
 app.use("/api/subscription", subscriptionRouter);
+app.use("/api/dashboard/admin", adminDashboardRouter);
+app.use("/api/dashboard/user", userDashboardRouter);
 
 // Global error handler - ดัก error ทุกตัวก่อนตอบ client
 // ต้องอยู่ท้ายสุดหลัง router ทั้งหมด

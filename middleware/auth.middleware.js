@@ -22,7 +22,29 @@ const verifyToken = async (req, res, next) => {
         if (!user) {
             return res.status(401).json({ message: "User not found" });
         }
-        
+
+        // เช็ค soft delete - user ที่ถูกลบใช้งานไม่ได้
+        if (user.is_deleted) {
+            return res.status(401).json({
+                code: "ACCOUNT_DELETED",
+                message: "This account has been deleted"
+            });
+        }
+
+        // เช็คแบน - banned user ใช้ API ไม่ได้
+        if (user.is_banned) {
+            return res.status(403).json({
+                code: "ACCOUNT_BANNED",
+                message: "Your account has been banned. Please contact support."
+            });
+        }
+
+        // อัปเดต last_active_at (fire-and-forget) สำหรับ admin dashboard active-users metric
+        User.updateOne(
+            { _id: user._id },
+            { $set: { last_active_at: new Date() } }
+        ).catch(err => console.error("[last_active_at] update failed:", err.message));
+
         req.user = user;
         next();
     } catch (error) {

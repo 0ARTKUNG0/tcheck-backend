@@ -2,6 +2,7 @@ const { getAIProvider } = require('../services/ai/provider');
 const User = require('../models/user.model');
 const crypto = require('crypto');
 const { chunkThaiText } = require('../utils/textSegmenter.util');
+const { logUsage, logActivity } = require('../utils/logger.util.js');
 
 const PAGE_BREAK_MARKER = '[---PAGE_BREAK---]';
 
@@ -83,6 +84,12 @@ const adjustTone = async (req, res) => {
 
             if (user.remaining_tokens < text.length) {
                 console.log(`[${requestId}] Insufficient tokens. User has ${user.remaining_tokens}, needs ${text.length}`);
+                logActivity({
+                    user_id: user._id,
+                    user_name: user.user_name,
+                    type: "token_limit_hit",
+                    metadata: { remaining: user.remaining_tokens, required: text.length, source: "tone_adjust" }
+                });
                 return res.status(403).json({
                     code: "INSUFFICIENT_TOKENS",
                     message: "Insufficient tokens. Please upgrade your plan.",
@@ -133,6 +140,13 @@ const adjustTone = async (req, res) => {
             user.remaining_tokens -= text.length;
             await user.save();
             console.log(`[${requestId}] Deducted ${text.length} tokens. New balance: ${user.remaining_tokens}`);
+            logUsage({
+                user_id: user._id,
+                action: "tone_adjust",
+                tokens_used: text.length,
+                text_length: text.length,
+                tone_type: tone_type
+            });
         }
 
         console.log(`[${requestId}] Tone adjustment completed. Original: ${text.length} chars, Adjusted: ${adjustedText.length} chars`);
