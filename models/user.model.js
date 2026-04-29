@@ -13,7 +13,26 @@ const userSchema = new Schema({
     },
     user_password: {
         type: String,
-        required: true
+        // ไม่ required เพราะผู้ใช้ที่ login ด้วย Google ไม่มีรหัสผ่าน
+        required: false
+    },
+    // Google OAuth - sub claim จาก Google (unique identifier)
+    google_id: {
+        type: String,
+        unique: true,
+        sparse: true,  // sparse: ยอมให้ null ซ้ำกันได้ (สำหรับ user ที่ไม่ได้ใช้ Google)
+        index: true
+    },
+    // ผู้ให้บริการ auth: "local" = email/password, "google" = Google OAuth
+    auth_provider: {
+        type: String,
+        enum: ["local", "google"],
+        default: "local"
+    },
+    // รูปโปรไฟล์จาก Google (URL)
+    profile_picture: {
+        type: String,
+        default: null
     },
     user_role: {
         type: String,

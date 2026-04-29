@@ -18,6 +18,16 @@ function isValidObjectId(id) {
     return typeof id === "string" && mongoose.Types.ObjectId.isValid(id) && /^[a-f\d]{24}$/i.test(id);
 }
 
+// ปกปิด email บางส่วนเพื่อความเป็นส่วนตัว (สำหรับ list view)
+// ตัวอย่าง: "kokpotod123@gmail.com" -> "k***123@gmail.com"
+function maskEmail(email) {
+    if (typeof email !== "string" || !email.includes("@")) return email;
+    const [local, domain] = email.split("@");
+    if (local.length <= 2) return `${local[0]}***@${domain}`;
+    if (local.length <= 4) return `${local[0]}***${local[local.length - 1]}@${domain}`;
+    return `${local[0]}***${local.slice(-3)}@${domain}`;
+}
+
 /**
  * GET /api/dashboard/admin/overview
  * คืน 5 cards: total_users, active_users (last 7d), pro_users, ai_calls_today, banned_users
@@ -78,7 +88,9 @@ const listUsers = async (req, res) => {
 
         const [users, total] = await Promise.all([
             User.find(filter)
-                .select("-user_password")
+                // ไม่ส่ง email + password ใน list view เพื่อความเป็นส่วนตัว
+                // (admin ดู email เต็มได้ที่ Get User Detail เท่านั้น)
+                .select("-user_password -user_email")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
@@ -114,7 +126,8 @@ const getUserById = async (req, res) => {
             });
         }
         const user = await User.findOne({ _id: req.params.id, is_deleted: { $ne: true } })
-            .select("-user_password")
+            // ไม่ส่ง email + password เพื่อความเป็นส่วนตัว แม้ใน detail view
+            .select("-user_password -user_email")
             .lean();
         if (!user) {
             return res.status(404).json({ code: "NOT_FOUND", message: "User not found" });
@@ -154,6 +167,20 @@ const updateUser = async (req, res) => {
     try {
         const { user_role, is_banned } = req.body;
         const updates = {};
+
+        // อนุญาตให้แก้แค่ user_role และ is_banned เท่านั้น
+        // ถ้ามี field อื่นปนมา → reject ทันที
+        const allowedFields = ["user_role", "is_banned"];
+        const submittedFields = Object.keys(req.body || {});
+        const disallowedFields = submittedFields.filter(f => !allowedFields.includes(f));
+        if (disallowedFields.length > 0) {
+            return res.status(400).json({
+                code: "FORBIDDEN_FIELDS",
+                message: `Cannot update these fields: ${disallowedFields.join(", ")}. Only user_role and is_banned are allowed.`,
+                allowed_fields: allowedFields,
+                disallowed_fields: disallowedFields
+            });
+        }
 
         if (user_role !== undefined) {
             if (!["user-free", "user-pro", "admin"].includes(user_role)) {

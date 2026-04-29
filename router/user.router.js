@@ -7,6 +7,8 @@ const { verifyToken, isAdmin, hasRole } = require("../middleware/auth.middleware
 router.post("/signup", userController.SignUp);
 //POST /api/user/signin - ล็อกอิน
 router.post("/signin", userController.SignIn);
+//POST /api/user/google-signin - ล็อกอิน/สมัครด้วย Google OAuth
+router.post("/google-signin", userController.googleSignIn);
 //POST /api/user/signout - ล็อกเอาออก
 router.post("/signout", userController.signOut);
 //POST /api/user/update-username - แก้ไขชื่อผู้ใช้
