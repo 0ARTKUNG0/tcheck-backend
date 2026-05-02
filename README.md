@@ -4,6 +4,15 @@ REST API backend for tcheck built with Node.js, Express 5, and MongoDB.
 
 ## Recent Updates
 
+### May 2026 - Admin/User Dashboard, Logging & Google Login (v1.4.0)
+
+- ✅ **Admin Dashboard API**: 10 endpoints under `/api/dashboard/admin/*` for user management, charts, activity feed, and overview metrics
+- ✅ **User Dashboard API**: `GET /api/dashboard/user/stats` returns all data for the user dashboard page in one call (cards, quota, 7-day usage chart)
+- ✅ **Activity & Usage Logging**: New `ActivityLog` and `UsageLog` models track signups, upgrades, payments, AI calls — used by dashboard charts and feed
+- ✅ **Google OAuth Sign-In**: `POST /api/user/google-signin` — sign in or auto-create account using Google ID token; auto-links existing accounts by email
+- ✅ **Account Lifecycle**: New `is_banned`, `is_deleted` (soft delete), and `last_active_at` fields on User; auth middleware blocks banned/deleted users
+- ✅ **Privacy hardening**: Email hidden in admin user list/detail; `PATCH user` rejects fields outside `user_role`/`is_banned`; admin can't delete self
+
 ### April 2026 - Tone Adjustment (ปรับโทนภาษา)
 
 - ✅ **New Feature: Tone Adjustment API**: `POST /api/tone/adjust` — adjust Thai text to formal (ทางการ) or casual (เป็นกันเอง) tone using AI
@@ -54,6 +63,7 @@ All environment variables are **required** and validated at startup.
 | `JWT_SECRET`  | Secret key for JWT signing | `your-secure-secret-key`           |
 | `NODE_ENV`    | Environment mode           | `development` / `production`       |
 | `BASE_URL`    | Allowed CORS origin        | `http://localhost:3000`            |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID (for `/api/user/google-signin`) | `xxxxxxx.apps.googleusercontent.com` |
 
 ### AI Provider Configuration
 
@@ -127,11 +137,12 @@ Base URL: `/api`
 
 ### Public Endpoints
 
-| Method | Endpoint            | Description                    | Request Body                                 |
-| ------ | ------------------- | ------------------------------ | -------------------------------------------- |
-| POST   | `/api/user/signup`  | Register a new user            | `{ user_name, user_email, user_password }`   |
-| POST   | `/api/user/signin`  | Sign in with email or username | `{ user_email or user_name, user_password }` |
-| POST   | `/api/user/signout` | Sign out (clears cookie)       | -                                            |
+| Method | Endpoint                    | Description                    | Request Body                                 |
+| ------ | --------------------------- | ------------------------------ | -------------------------------------------- |
+| POST   | `/api/user/signup`          | Register a new user            | `{ user_name, user_email, user_password }`   |
+| POST   | `/api/user/signin`          | Sign in with email or username | `{ user_email or user_name, user_password }` |
+| POST   | `/api/user/google-signin`   | Sign in / sign up with Google  | `{ credential }` (Google ID token)           |
+| POST   | `/api/user/signout`         | Sign out (clears cookie)       | -                                            |
 
 **User Signup Validation:**
 - Email must be valid format (validated with regex)
@@ -300,6 +311,98 @@ On update, new corrections are appended to existing ones. Only the latest 6 are 
 
 - Users can only read/update/delete their own documents
 - Returns `403 FORBIDDEN` if accessing another user's document
+
+### Google Sign-In
+
+| Method | Endpoint                  | Description                                    | Request Body              |
+| ------ | ------------------------- | ---------------------------------------------- | ------------------------- |
+| POST   | `/api/user/google-signin` | Sign in or auto-create account via Google ID  | `{ credential }`          |
+
+**Request:**
+
+```json
+{
+  "credential": "<Google ID token from frontend GoogleLogin component>"
+}
+```
+
+**Behavior:**
+
+1. Backend verifies the credential against Google's public keys (using `jwks-rsa` + `jsonwebtoken`)
+2. If user exists by `google_id` → sign in
+3. Else if user exists by email → auto-link Google to the existing account
+4. Else → create a new user (no password, `auth_provider="google"`)
+5. Issues JWT cookie identical to regular sign-in
+
+**Success Response (200):**
+
+```json
+{
+  "message": "User signed in successfully",
+  "user_name": "...",
+  "user_role": "user-free",
+  "user_email": "...",
+  "profile_picture": "https://lh3.googleusercontent.com/...",
+  "auth_provider": "google",
+  "is_new_user": false
+}
+```
+
+**Error Responses:**
+
+- `400 VALIDATION_ERROR` — `credential` missing or not a string
+- `401 INVALID_GOOGLE_TOKEN` — verification failed (expired, wrong audience, bad signature)
+- `403 EMAIL_NOT_VERIFIED` — Google email not verified
+- `403 ACCOUNT_BANNED` / `401 ACCOUNT_DELETED` — account lifecycle blocks
+- `409 DUPLICATE_EMAIL` — race condition during signup
+
+### Subscription
+
+| Method | Endpoint                       | Description                          | Auth        | Body                  |
+| ------ | ------------------------------ | ------------------------------------ | ----------- | --------------------- |
+| GET    | `/api/subscription/status`     | Get own subscription / Pro status   | User        | -                     |
+| POST   | `/api/subscription/grant-pro`  | Manually grant Pro access (N days)  | Admin       | `{ user_id, days }`   |
+
+### Admin Dashboard
+
+All endpoints require `verifyToken + isAdmin`. Mounted at `/api/dashboard/admin`.
+
+| Method | Endpoint                                       | Description                                                |
+| ------ | ---------------------------------------------- | ---------------------------------------------------------- |
+| GET    | `/api/dashboard/admin/overview`                | 5 cards: total/active/pro/banned users + AI calls today    |
+| GET    | `/api/dashboard/admin/users`                   | Paginated user list (search, role/banned filters; **email hidden**) |
+| GET    | `/api/dashboard/admin/users/:id`               | User detail + stats + recent activity (**email hidden**)   |
+| PATCH  | `/api/dashboard/admin/users/:id`               | Update role / ban status (only `user_role` and `is_banned` allowed) |
+| DELETE | `/api/dashboard/admin/users/:id`               | Soft delete user (sets `is_deleted` + `is_banned`)         |
+| POST   | `/api/dashboard/admin/users/:id/reset-tokens`  | Reset user's `remaining_tokens` to role limit              |
+| GET    | `/api/dashboard/admin/charts/user-growth`      | New users per day (`?days=1..90`, default 30)              |
+| GET    | `/api/dashboard/admin/charts/ai-usage`         | AI calls per day, split by `grammar_check` / `tone_adjust` |
+| GET    | `/api/dashboard/admin/charts/conversion-rate`  | Free→Pro upgrades per day + overall conversion %           |
+| GET    | `/api/dashboard/admin/activity`                | Recent activity feed (`?limit=1..100`, default 20)         |
+
+**Activity Types Logged:**
+
+`user_signup`, `user_upgraded_pro`, `payment_received`, `token_limit_hit`, `user_banned`, `user_deleted`
+
+**Self-Protection:**
+
+- Admin cannot delete their own account (`SELF_ACTION_FORBIDDEN` / `VALIDATION_ERROR`)
+- `PATCH user` rejects any field outside `user_role` and `is_banned` with `400 FORBIDDEN_FIELDS`
+
+### User Dashboard
+
+| Method | Endpoint                       | Description                                              | Auth |
+| ------ | ------------------------------ | -------------------------------------------------------- | ---- |
+| GET    | `/api/dashboard/user/stats`    | All data for the user dashboard page in one call         | User |
+
+**Response includes:**
+
+- `total_checks` — all-time AI call count for this user
+- `total_corrections` — sum of `issues_found` from grammar checks
+- `quota` — `{ used, limit, remaining, percent_used, user_role, limits_by_role }`
+- `last_7_days` — `[{ date, value }]` (7 entries with gaps filled)
+- `summary_7_days` — `{ total, avg_per_day, max_per_day }`
+- `breakdown` — `{ grammar_checks, tone_adjusts }`
 
 ## User Roles
 
@@ -519,14 +622,17 @@ const chunks = chunkThaiText(text, 20);
 
 ## API Documentation
 
-- **Interactive API Docs**: [View on SwaggerHub](https://app.swaggerhub.com/apis-docs/none-767/tcheck-backend-api/1.3.0?view=uiDocs) - Try out the API directly in your browser
+- **Interactive API Docs**: Run the server and visit `http://localhost:5000/docs` (or `<your-render-url>/docs` in production) — Swagger UI is self-hosted, no third-party account needed
 - **Postman Collection**: Import `tcheck-backend.postman_collection.json` to test all endpoints
-- **OpenAPI Spec**: See `swagger.yml` for complete API documentation
+- **OpenAPI Spec**: `none-767-tcheck-backend-api-1.4.0-resolved.yaml` (loaded automatically by `/docs`)
 
 The collections include:
 
-- User authentication (signup, signin, signout)
+- User authentication (signup, signin, **google-signin**, signout)
 - User profile management
 - Document CRUD operations
 - AI grammar checking
 - Tone adjustment (formal/casual)
+- **Subscription** (status, manual Pro grant)
+- **Admin Dashboard** (overview, users, charts, activity)
+- **User Dashboard** (stats)

@@ -1,0 +1,1505 @@
+openapi: 3.0.3
+info:
+  title: tcheck Backend API
+  description: |
+    REST API backend for tcheck - A Thai grammar and typo checking application.
+
+    ## Features
+    - User authentication with JWT (httpOnly cookies)
+    - Document management (CRUD operations with unlimited content)
+    - AI-powered Thai grammar and typo checking
+    - Role-based access control (guest, user-free, user-pro, admin)
+    - **Token/Quota Tracking System** (1 character = 1 token)
+    - **Daily Token Reset** at midnight Thailand Time
+    - Rate limiting based on user roles
+
+    ## Authentication
+    The API uses JWT tokens stored in httpOnly cookies for security. Tokens can also be passed via the `Authorization: Bearer <token>` header.
+
+    ## Token Quota System (NEW)
+    Authenticated users have daily token quotas that reset at midnight Thailand Time:
+    - **user-free**: 4,000 tokens/day
+    - **user-pro**: 10,000 tokens/day
+    - **admin**: 50,000 tokens/day
+    - Tokens are deducted based on text length (1 character = 1 token)
+    - Check balance with GET /api/user/check-token
+
+    ## Rate Limiting
+    Grammar check endpoints have dual rate limiting:
+    - **Per-second limits**: Guest (1/sec), Free (2/sec), Pro (4/sec), Admin (5/sec)
+    - **Per-minute limits**: Guest (5/min), Free (10/min), Pro (30/min), Admin (100/min)
+    ## What's New in v1.4.0
+    - **Google OAuth Sign-In** (`POST /api/user/google-signin`)
+    - **Admin Dashboard** (10 endpoints under `/api/dashboard/admin/*`)
+    - **User Dashboard** (`GET /api/dashboard/user/stats`)
+    - **Subscription** management (`GET /api/subscription/status`, `POST /api/subscription/grant-pro`)
+    - **Activity & Usage Logging** (powers dashboard charts and feeds)
+    - **Account Lifecycle**: `is_banned`, `is_deleted` (soft delete), `last_active_at`
+    - **Privacy hardening**: emails hidden in admin user list/detail
+  contact:
+    name: tcheck API Support
+  version: 1.4.0
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.tcheck.example.com
+    description: Production server (example)
+tags:
+  - name: Authentication
+    description: "User signup, signin, and signout operations"
+  - name: User Profile
+    description: User profile and settings management
+  - name: Token Tracking
+    description: Token quota checking and management (NEW in v1.3.0)
+  - name: Documents
+    description: Document CRUD operations for authenticated users
+  - name: Grammar Check
+    description: AI-powered Thai grammar and typo checking
+  - name: Tone Adjustment
+    description: Adjust Thai text between formal and casual tones
+  - name: Subscription
+    description: Pro subscription status and admin grant (NEW in v1.4.0)
+  - name: Admin Dashboard
+    description: Admin-only metrics, user management, charts, activity feed (NEW in v1.4.0)
+  - name: User Dashboard
+    description: Logged-in user's own stats / dashboard data (NEW in v1.4.0)
+  - name: Google OAuth
+    description: Sign in / sign up via Google ID token (NEW in v1.4.0)
+paths:
+  /api/user/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: "Creates a new user account with email, username, and password. New users automatically get the `user-free` role."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user_signup_body"
+        required: true
+      responses:
+        "201":
+          description: User created successfully
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=eyJhbGc...; HttpOnly; Secure; SameSite=Strict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_201"
+        "400":
+          description: Bad request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: Please provide all required fields
+        "409":
+          description: Conflict - email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: Email already exists
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/user/signin:
+    post:
+      tags:
+        - Authentication
+      summary: Sign in with email or username
+      description: Authenticates a user and returns a JWT token in an httpOnly cookie. Accepts either email or username for login.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user_signin_body"
+        required: true
+      responses:
+        "200":
+          description: Sign in successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=eyJhbGc...; HttpOnly; Secure; SameSite=Strict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200"
+        "400":
+          description: Bad request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized - invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: Invalid credentials
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/user/signout:
+    post:
+      tags:
+        - Authentication
+      summary: Sign out current user
+      description: "Clears the authentication cookie, effectively signing out the user."
+      responses:
+        "200":
+          description: Sign out successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=; Max-Age=0
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_1"
+  /api/user/profile:
+    get:
+      tags:
+        - User Profile
+      summary: Get current user profile
+      description: Returns the profile information of the currently authenticated user (excludes password).
+      responses:
+        "200":
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_2"
+        "401":
+          description: Unauthorized - no valid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: Unauthorized
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+  /api/user/check-token:
+    get:
+      tags:
+        - Token Tracking
+      summary: Check remaining token balance
+      description: |
+        Returns the current token balance for the authenticated user.
+        Tokens are deducted when using grammar check API (1 character = 1 token).
+        Quotas reset daily at midnight Thailand Time.
+      responses:
+        "200":
+          description: Token balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  remaining_tokens:
+                    type: integer
+                    description: Current remaining token balance
+                    example: 3750
+              examples:
+                free_user:
+                  summary: Free user with some usage
+                  value:
+                    remaining_tokens: 3750
+                pro_user:
+                  summary: Pro user full quota
+                  value:
+                    remaining_tokens: 10000
+                depleted:
+                  summary: User with low tokens
+                  value:
+                    remaining_tokens: 150
+        "401":
+          description: Unauthorized - no valid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: UNAUTHORIZED
+                message: Authentication required
+        "404":
+          description: User not found in database
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: NOT_FOUND
+                message: User not found
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: INTERNAL_ERROR
+                message: Internal server error
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+  /api/user/update-username:
+    post:
+      tags:
+        - User Profile
+      summary: Update username
+      description: Updates the username of the currently authenticated user.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user_updateusername_body"
+        required: true
+      responses:
+        "200":
+          description: Username updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_3"
+        "400":
+          description: Bad request - missing username
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+  /api/grammar/check:
+    post:
+      tags:
+        - Grammar Check
+      summary: Check Thai grammar and typos
+      description: |
+        Analyzes Thai text for grammar and spelling errors using AI. Returns character positions for highlighting issues.
+
+        **Authentication is optional** - guest users can use this endpoint with limited tokens.
+
+        **Token Limits by Role:**
+        - Guest (not logged in): 1,000 characters/request
+        - user-free: 4,000 characters/request
+        - user-pro: 10,000 characters/request
+        - admin: 50,000 characters/request
+
+        **Token Deduction (v1.3.0):**
+        - For authenticated users: Tokens are deducted based on text length (1 char = 1 token)
+        - Check balance before request to avoid 403 INSUFFICIENT_TOKENS error
+        - Balance is shown in response metadata.tokenRemaining
+
+        **Rate Limits:**
+        - Per-second: Guest (1/s), Free (2/s), Pro (4/s), Admin (5/s)
+        - Per-minute: Guest (5/min), Free (10/min), Pro (30/min), Admin (100/min)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/grammar_check_body"
+        required: true
+      responses:
+        "200":
+          description: Grammar check completed successfully
+          headers:
+            X-RateLimit-Limit-Second:
+              description: Per-second rate limit for this user role
+              schema:
+                type: integer
+            X-RateLimit-Remaining-Second:
+              description: Remaining requests this second
+              schema:
+                type: integer
+            X-RateLimit-Limit-Minute:
+              description: Per-minute rate limit for this user role
+              schema:
+                type: integer
+            X-RateLimit-Remaining-Minute:
+              description: Remaining requests this minute
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_4"
+        "400":
+          description: Bad request - validation error or token limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_400"
+              examples:
+                validation_error:
+                  value:
+                    error: VALIDATION_ERROR
+                    message: Text is required and must be a non-empty string
+                token_limit:
+                  value:
+                    error: TOKEN_LIMIT_EXCEEDED
+                    message: Text exceeds your token limit of 1000 characters. Please shorten your text or upgrade your account.
+                    currentLength: 1500
+                    allowedLength: 1000
+                    userRole: guest
+        "403":
+          description: Insufficient tokens (authenticated users only)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: INSUFFICIENT_TOKENS
+                  message:
+                    type: string
+                    example: Insufficient tokens. Please upgrade your plan.
+                  remaining_tokens:
+                    type: integer
+                    description: Current token balance
+                    example: 50
+                  required_tokens:
+                    type: integer
+                    description: Tokens needed for this request
+                    example: 500
+                  requestId:
+                    type: string
+                    example: abc123-def456
+        "429":
+          description: Rate limit exceeded (application or AI provider)
+          headers:
+            X-RateLimit-Limit-Second:
+              schema:
+                type: integer
+            X-RateLimit-Remaining-Second:
+              schema:
+                type: integer
+              example: 0
+            X-RateLimit-Limit-Minute:
+              schema:
+                type: integer
+            X-RateLimit-Remaining-Minute:
+              schema:
+                type: integer
+              example: 0
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_429"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_500"
+        "502":
+          description: AI service error - upstream error or parse error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_502"
+        "504":
+          description: AI service timeout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_504"
+      security:
+        - {}
+        - cookieAuth: []
+        - bearerAuth: []
+  /api/docs:
+    get:
+      tags:
+        - Documents
+      summary: List user's documents
+      description: Returns a paginated list of documents owned by the authenticated user.
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          required: false
+          schema:
+            minimum: 1
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            maximum: 100
+            minimum: 1
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: Sort order
+          required: false
+          schema:
+            type: string
+            default: newest
+            enum:
+              - newest
+              - oldest
+      responses:
+        "200":
+          description: Documents retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_5"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+    post:
+      tags:
+        - Documents
+      summary: Create a new document
+      description: Creates a new document for the authenticated user.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api_docs_body"
+        required: false
+      responses:
+        "201":
+          description: Document created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_201_1"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+  /api/docs/{id}:
+    get:
+      tags:
+        - Documents
+      summary: Get document by ID
+      description: Retrieves a specific document by ID. User must own the document.
+      parameters:
+        - name: id
+          in: path
+          description: Document ID
+          required: true
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439011
+      responses:
+        "200":
+          description: Document retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_6"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - user does not own this document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: FORBIDDEN
+                message: You do not have permission to access this document
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: NOT_FOUND
+                message: Document not found
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+    delete:
+      tags:
+        - Documents
+      summary: Delete document
+      description: Deletes a document. User must own the document.
+      parameters:
+        - name: id
+          in: path
+          description: Document ID
+          required: true
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439011
+      responses:
+        "200":
+          description: Document deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_7"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - user does not own this document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+    patch:
+      tags:
+        - Documents
+      summary: Update document
+      description: Updates a document's title and/or content. User must own the document.
+      parameters:
+        - name: id
+          in: path
+          description: Document ID
+          required: true
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439011
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/docs_id_body"
+        required: true
+      responses:
+        "200":
+          description: Document updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/inline_response_200_8"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - user does not own this document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+
+  # ===== v1.4.0 endpoints =====
+
+  /api/user/google-signin:
+    post:
+      tags:
+        - Google OAuth
+      summary: Sign in or sign up with Google
+      description: |
+        Verifies a Google ID token (`credential`) and signs the user in.
+        - If a user with the matching `google_id` exists → sign in
+        - Else if a user with the matching email exists → auto-link Google to that account
+        - Else → create a new account (no password, `auth_provider="google"`)
+        Sets the `token` httpOnly cookie identical to regular sign-in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                credential:
+                  type: string
+                  description: Google ID token from frontend `<GoogleLogin>` component
+      responses:
+        "200":
+          description: Sign in successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user_name: { type: string }
+                  user_role:
+                    { type: string, enum: [user-free, user-pro, admin] }
+                  user_email: { type: string }
+                  profile_picture: { type: string, nullable: true }
+                  auth_provider: { type: string, enum: [local, google] }
+                  is_new_user: { type: boolean }
+        "400": { description: "VALIDATION_ERROR — credential missing" }
+        "401": { description: "INVALID_GOOGLE_TOKEN or ACCOUNT_DELETED" }
+        "403": { description: "EMAIL_NOT_VERIFIED or ACCOUNT_BANNED" }
+        "409": { description: "DUPLICATE_EMAIL race condition" }
+
+  /api/subscription/status:
+    get:
+      tags: [Subscription]
+      summary: Get own subscription status
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current subscription info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_role: { type: string }
+                  subscription_status:
+                    { type: string, enum: [none, active, expired, cancelled] }
+                  pro_expires_at:
+                    { type: string, format: date-time, nullable: true }
+                  is_active: { type: boolean }
+                  days_remaining: { type: integer }
+
+  /api/subscription/grant-pro:
+    post:
+      tags: [Subscription]
+      summary: Manually grant Pro access (admin only)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, days]
+              properties:
+                user_id: { type: string, description: "Target user _id" }
+                days:
+                  {
+                    type: integer,
+                    minimum: 1,
+                    description: "Days to add (extends existing if active)",
+                  }
+      responses:
+        "200": { description: Pro granted successfully }
+        "400": { description: "Validation error" }
+        "403": { description: "Forbidden (not admin)" }
+
+  /api/dashboard/admin/overview:
+    get:
+      tags: [Admin Dashboard]
+      summary: Dashboard overview cards
+      description: 5 cards — total/active/pro/banned users + AI calls today
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      responses:
+        "200":
+          description: Overview metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_users: { type: integer }
+                  active_users:
+                    { type: integer, description: "Active in last 7 days" }
+                  pro_users: { type: integer }
+                  ai_calls_today: { type: integer }
+                  banned_users: { type: integer }
+
+  /api/dashboard/admin/users:
+    get:
+      tags: [Admin Dashboard]
+      summary: Paginated user list (email hidden for privacy)
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, default: 20, maximum: 100 },
+          }
+        - {
+            name: search,
+            in: query,
+            schema: { type: string },
+            description: "Match name or email (server-side)",
+          }
+        - {
+            name: role,
+            in: query,
+            schema: { type: string, enum: [user-free, user-pro, admin] },
+          }
+        - {
+            name: banned,
+            in: query,
+            schema: { type: string, enum: ["true", "false"] },
+          }
+      responses:
+        "200": { description: Paginated user list (no `user_email` in items) }
+
+  /api/dashboard/admin/users/{id}:
+    get:
+      tags: [Admin Dashboard]
+      summary: User detail + stats + recent activity (email hidden)
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: User detail }
+        "400": { description: "Invalid ObjectId format" }
+        "404": { description: "Not found" }
+    patch:
+      tags: [Admin Dashboard]
+      summary: Update user role or ban status
+      description: Only `user_role` and `is_banned` allowed. Other fields → 400 FORBIDDEN_FIELDS.
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_role: { type: string, enum: [user-free, user-pro, admin] }
+                is_banned: { type: boolean }
+      responses:
+        "200": { description: Updated }
+        "400": { description: "VALIDATION_ERROR or FORBIDDEN_FIELDS" }
+        "404": { description: "Not found" }
+    delete:
+      tags: [Admin Dashboard]
+      summary: Soft delete user (admin cannot delete self)
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Deleted (soft) }
+        "400": { description: "Cannot delete own account" }
+        "404": { description: "Not found" }
+
+  /api/dashboard/admin/users/{id}/reset-tokens:
+    post:
+      tags: [Admin Dashboard]
+      summary: Reset user's remaining_tokens to role limit
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Tokens reset }
+        "404": { description: "Not found" }
+
+  /api/dashboard/admin/charts/user-growth:
+    get:
+      tags: [Admin Dashboard]
+      summary: New users per day (chart data, gaps filled)
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - {
+            name: days,
+            in: query,
+            schema: { type: integer, default: 30, minimum: 1, maximum: 90 },
+          }
+      responses:
+        "200": { description: "Returns { days, data: [{date, value}] }" }
+
+  /api/dashboard/admin/charts/ai-usage:
+    get:
+      tags: [Admin Dashboard]
+      summary: AI calls per day, split by grammar_check vs tone_adjust
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - {
+            name: days,
+            in: query,
+            schema: { type: integer, default: 7, minimum: 1, maximum: 90 },
+          }
+      responses:
+        "200":
+          {
+            description: "Returns { days, grammar_check: [...], tone_adjust: [...] }",
+          }
+
+  /api/dashboard/admin/charts/conversion-rate:
+    get:
+      tags: [Admin Dashboard]
+      summary: Free→Pro upgrades per day + overall snapshot
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - {
+            name: days,
+            in: query,
+            schema: { type: integer, default: 30, minimum: 1, maximum: 90 },
+          }
+      responses:
+        "200":
+          { description: "Returns upgrades_per_day and overall conversion %" }
+
+  /api/dashboard/admin/activity:
+    get:
+      tags: [Admin Dashboard]
+      summary: Recent activity feed
+      description: |
+        Activity types: `user_signup`, `user_upgraded_pro`, `payment_received`,
+        `token_limit_hit`, `user_banned`, `user_deleted`
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, default: 20, minimum: 1, maximum: 100 },
+          }
+      responses:
+        "200": { description: "Recent activities ordered by createdAt desc" }
+
+  /api/dashboard/user/stats:
+    get:
+      tags: [User Dashboard]
+      summary: All data for user dashboard page
+      description: |
+        Returns everything needed for the user dashboard in a single call:
+        cards (total_checks, total_corrections), quota donut (used/limit/percent),
+        7-day usage chart, summary, and grammar-vs-tone breakdown.
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      responses:
+        "200":
+          description: User dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_checks: { type: integer }
+                  total_corrections: { type: integer }
+                  quota:
+                    type: object
+                    properties:
+                      used: { type: integer }
+                      limit: { type: integer }
+                      remaining: { type: integer }
+                      percent_used: { type: number }
+                      user_role: { type: string }
+                      limits_by_role: { type: object }
+                  last_7_days:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string }
+                        value: { type: integer }
+                  summary_7_days:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      avg_per_day: { type: number }
+                      max_per_day: { type: integer }
+                  breakdown:
+                    type: object
+                    properties:
+                      grammar_checks: { type: integer }
+                      tone_adjusts: { type: integer }
+
+components:
+  schemas:
+    UserProfile:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 507f1f77bcf86cd799439011
+        user_name:
+          type: string
+          example: johndoe
+        user_email:
+          type: string
+          format: email
+          example: john@example.com
+        user_role:
+          type: string
+          description: User role determining access levels and limits
+          example: user-free
+          enum:
+            - user-free
+            - user-pro
+            - admin
+        remaining_tokens:
+          type: integer
+          description: Remaining token balance (1 character = 1 token), resets daily at midnight Thailand Time
+          example: 3500
+        createdAt:
+          type: string
+          format: date-time
+          example: 2024-01-01T00:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2024-03-04T12:00:00Z
+    Document:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 507f1f77bcf86cd799439011
+        title:
+          maxLength: 80
+          type: string
+          example: My Document
+        content:
+          type: string
+          description: Document content (unlimited length, up to 16MB MongoDB limit)
+          example: This is the content of my document.
+        corrections:
+          type: array
+          description: Array of grammar corrections (max 6, oldest removed when exceeded)
+          items:
+            type: object
+            properties:
+              span:
+                type: string
+                description: The problematic text
+                example: ไท
+              replacement:
+                type: string
+                description: The corrected text
+                example: ไทย
+              reason:
+                type: string
+                description: Explanation for the correction
+                example: ขาดตัว ย
+              correctedAt:
+                type: string
+                format: date-time
+                description: Timestamp when correction was made
+                example: 2024-03-04T12:00:00.000Z
+        user_id:
+          type: string
+          description: ID of the user who owns this document
+          example: 507f1f77bcf86cd799439012
+        createdAt:
+          type: string
+          format: date-time
+          example: 2024-01-01T00:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2024-03-04T12:00:00Z
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: An error occurred
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Text is required and must be a non-empty string
+    TokenLimitError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: TOKEN_LIMIT_EXCEEDED
+        message:
+          type: string
+          example: Text exceeds your token limit of 1000 characters. Please shorten your text or upgrade your account.
+        currentLength:
+          type: integer
+          example: 1500
+        allowedLength:
+          type: integer
+          example: 1000
+        userRole:
+          type: string
+          example: guest
+          enum:
+            - guest
+            - user-free
+            - user-pro
+            - admin
+    user_signup_body:
+      required:
+        - user_email
+        - user_name
+        - user_password
+      type: object
+      properties:
+        user_name:
+          type: string
+          description: Username for the account
+          example: johndoe
+        user_email:
+          type: string
+          description: Email address (must be unique)
+          format: email
+          example: john@example.com
+        user_password:
+          minLength: 6
+          type: string
+          description: Password (will be hashed with bcrypt)
+          format: password
+          example: password123
+    inline_response_201:
+      type: object
+      properties:
+        message:
+          type: string
+          example: User created successfully
+        user:
+          $ref: "#/components/schemas/UserProfile"
+    user_signin_body:
+      required:
+        - user_password
+      type: object
+      properties:
+        user_email:
+          type: string
+          description: Email address (either email or username required)
+          format: email
+          example: john@example.com
+        user_name:
+          type: string
+          description: Username (either email or username required)
+          example: johndoe
+        user_password:
+          type: string
+          description: User password
+          format: password
+          example: password123
+    inline_response_200:
+      type: object
+      properties:
+        message:
+          type: string
+          example: User signed in successfully
+        user:
+          $ref: "#/components/schemas/UserProfile"
+    inline_response_200_1:
+      type: object
+      properties:
+        message:
+          type: string
+          example: User signed out successfully
+    inline_response_200_2:
+      type: object
+      properties:
+        message:
+          type: string
+          example: User profile retrieved successfully
+        user:
+          $ref: "#/components/schemas/UserProfile"
+    user_updateusername_body:
+      required:
+        - user_name
+      type: object
+      properties:
+        user_name:
+          type: string
+          description: New username
+          example: newusername
+    inline_response_200_3:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Username updated successfully
+        user:
+          $ref: "#/components/schemas/UserProfile"
+    grammar_check_body:
+      required:
+        - text
+      type: object
+      properties:
+        text:
+          type: string
+          description: Thai text to check for grammar and spelling errors
+          example: ผมชอบกินอาหารไท
+        mode:
+          type: string
+          description: Checking mode (optional)
+          example: normal
+          default: normal
+          enum:
+            - strict
+            - normal
+            - casual
+    inline_response_200_4:
+      type: object
+      properties:
+        issues:
+          type: array
+          description: Array of grammar/spelling issues found (max 20)
+          items:
+            $ref: "#/components/schemas/inline_response_200_4_issues"
+        metadata:
+          $ref: "#/components/schemas/inline_response_200_4_metadata"
+    inline_response_400:
+      oneOf:
+        - $ref: "#/components/schemas/ValidationError"
+        - $ref: "#/components/schemas/TokenLimitError"
+    inline_response_429:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - RATE_LIMITED
+            - AI_RATE_LIMIT
+          example: RATE_LIMITED
+        message:
+          type: string
+          example: Rate limit exceeded. Please try again later.
+        retryAfter:
+          type: integer
+          description: Seconds to wait before retrying
+          example: 5
+        userRole:
+          type: string
+          example: guest
+        requestId:
+          type: string
+          example: abc123-def456
+    inline_response_500:
+      type: object
+      properties:
+        error:
+          type: string
+          example: INTERNAL_ERROR
+        message:
+          type: string
+          example: An unexpected error occurred
+        requestId:
+          type: string
+          example: abc123-def456
+    inline_response_502:
+      type: object
+      properties:
+        error:
+          type: string
+          example: AI_UPSTREAM_ERROR
+          enum:
+            - AI_UPSTREAM_ERROR
+            - PARSE_ERROR
+        message:
+          type: string
+          example: AI service is currently unavailable. Please try again later.
+        requestId:
+          type: string
+          example: abc123-def456
+    inline_response_504:
+      type: object
+      properties:
+        error:
+          type: string
+          example: AI_TIMEOUT
+        message:
+          type: string
+          example: AI service request timed out. Please try again.
+        requestId:
+          type: string
+          example: abc123-def456
+    inline_response_200_5:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/inline_response_200_5_items"
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          description: Total number of documents
+          example: 42
+    api_docs_body:
+      type: object
+      properties:
+        title:
+          maxLength: 80
+          type: string
+          description: Document title
+          example: My New Document
+          default: เอกสารไม่มีชื่อ
+        content:
+          maxLength: 5000
+          type: string
+          description: Document content
+          example: This is the content of my document.
+          default: ""
+    inline_response_201_1:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Document created successfully
+        document:
+          $ref: "#/components/schemas/Document"
+    inline_response_200_6:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Document retrieved successfully
+        document:
+          $ref: "#/components/schemas/Document"
+    inline_response_200_7:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Document deleted successfully
+    docs_id_body:
+      type: object
+      properties:
+        title:
+          maxLength: 80
+          type: string
+          description: Updated document title
+          example: Updated Title
+        content:
+          maxLength: 5000
+          type: string
+          description: Updated document content
+          example: Updated content here.
+    inline_response_200_8:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Document updated successfully
+        document:
+          $ref: "#/components/schemas/Document"
+    inline_response_200_4_issues:
+      type: object
+      properties:
+        start:
+          type: integer
+          description: Starting character position (0-based index)
+          example: 12
+        end:
+          type: integer
+          description: "Ending character position (0-based, exclusive)"
+          example: 14
+        span:
+          type: string
+          description: The problematic text
+          example: ไท
+        replacement:
+          type: string
+          description: The corrected text
+          example: ไทย
+        reason:
+          maxLength: 50
+          type: string
+          description: Explanation in Thai for the correction
+          example: ขาดตัว ย
+    inline_response_200_4_metadata:
+      type: object
+      properties:
+        text_length:
+          type: integer
+          description: Length of input text in characters
+          example: 50
+        issues_found:
+          type: integer
+          description: Number of issues detected
+          example: 1
+        mode:
+          type: string
+          description: Checking mode used
+          example: normal
+        provider:
+          type: string
+          description: AI provider used (typhoon or lmstudio)
+          example: typhoon
+        requestId:
+          type: string
+          description: Unique request identifier for debugging
+          example: abc123-def456-789
+        userRole:
+          type: string
+          description: User role for this request
+          example: user-free
+          enum:
+            - guest
+            - user-free
+            - user-pro
+            - admin
+        tokenLimit:
+          type: integer
+          description: Character limit for this user role
+          example: 4000
+        tokenUsed:
+          type: integer
+          description: Characters used in this request
+          example: 50
+        tokenRemaining:
+          type: integer
+          description: Remaining token balance for authenticated users (actual DB balance after deduction), null for guests
+          example: 3950
+    inline_response_200_5_items:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 507f1f77bcf86cd799439011
+        title:
+          type: string
+          example: My Document
+        snippet:
+          type: string
+          description: First 120 characters of content
+          example: This is the beginning of my document...
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2024-03-04T12:00:00Z
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      description: JWT token stored in httpOnly cookie
+      name: token
+      in: cookie
+    bearerAuth:
+      type: http
+      description: JWT token in Authorization header
+      scheme: bearer
+      bearerFormat: JWT

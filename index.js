@@ -19,6 +19,10 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yaml");
+const fs = require("fs");
+const path = require("path");
 
 // Routers
 const userRouter = require("./router/user.router");
@@ -67,8 +71,24 @@ app.use(cookieParser());
 app.use("/uploads", express.static("uploads"));
 
 app.get("/", (req, res) => {
-    res.json({ message: "tcheck API is running" });
+    res.json({ message: "tcheck API is running", docs: "/docs" });
 });
+
+// Swagger UI - interactive API documentation (self-hosted, no SwaggerHub needed)
+try {
+    const swaggerYaml = fs.readFileSync(
+        path.join(__dirname, "none-767-tcheck-backend-api-1.4.0-resolved.yaml"),
+        "utf8"
+    );
+    const swaggerSpec = YAML.parse(swaggerYaml);
+    app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+        customSiteTitle: "tcheck Backend API Docs",
+        customCss: ".swagger-ui .topbar { display: none }"
+    }));
+    console.log("📚 Swagger UI mounted at /docs");
+} catch (err) {
+    console.warn("⚠️  Swagger UI not loaded:", err.message);
+}
 
 // Mount routers
 app.use("/api/user", userRouter);

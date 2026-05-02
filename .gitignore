@@ -12,3 +12,7 @@ swagger.yml
 *CLAUDE.md.backup
 .agent
 *changelog_*.md
+
+# Exceptions: keep API spec + Postman collection in repo (needed for Swagger UI + testing)
+!none-767-tcheck-backend-api-*.yaml
+!tcheck-backend.postman_collection.json

@@ -1,0 +1,1345 @@
+{
+	"info": {
+		"_postman_id": "tcheck-backend-collection",
+		"name": "TCheck Backend API",
+		"description": "Complete API collection for tcheck backend with user authentication and document management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "User Authentication",
+			"item": [
+				{
+					"name": "Sign Up",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_name\": \"John Doe\",\n  \"user_email\": \"john@example.com\",\n  \"user_password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/signup",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"signup"
+							]
+						},
+						"description": "Register a new user. Returns JWT token in httpOnly cookie.\n\nRequired fields:\n- user_name\n- user_email\n- user_password\n\nDefault role: user-free"
+					},
+					"response": []
+				},
+				{
+					"name": "Sign In",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_email\": \"john@example.com\",\n  \"user_password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/signin",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"signin"
+							]
+						},
+						"description": "Authenticate existing user. Returns JWT token in httpOnly cookie.\n\nYou can sign in with either:\n- user_email + user_password\n- user_name + user_password"
+					},
+					"response": []
+				},
+				{
+					"name": "Google Sign In",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"credential\": \"<paste Google ID token here>\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/google-signin",
+							"host": ["{{base_url}}"],
+							"path": ["api", "user", "google-signin"]
+						},
+						"description": "Sign in or sign up with Google OAuth.\n\n**Body:**\n- `credential` (string, required): Google ID token from frontend `<GoogleLogin>` component (`response.credential`)\n\n**Behavior:**\n1. Backend verifies the credential with Google\n2. If user exists by `google_id` → sign in\n3. Else if user exists by email → auto-link Google to existing account\n4. Else → create new account (no password, auth_provider=\"google\")\n\n**Response (200):**\n```json\n{\n  \"message\": \"...\",\n  \"user_name\": \"...\",\n  \"user_role\": \"user-free\",\n  \"user_email\": \"...\",\n  \"profile_picture\": \"https://...\",\n  \"auth_provider\": \"google\",\n  \"is_new_user\": true\n}\n```\n\nSets `token` httpOnly cookie just like regular Sign In.\n\n**Errors:**\n- 400 VALIDATION_ERROR — missing/invalid credential\n- 401 INVALID_GOOGLE_TOKEN — verification failed (expired, wrong audience, bad signature)\n- 403 EMAIL_NOT_VERIFIED — Google email not verified\n- 403 ACCOUNT_BANNED / 401 ACCOUNT_DELETED\n- 409 DUPLICATE_EMAIL — race condition on signup\n\n**Testing tip:**\nGet a real Google ID token via https://developers.google.com/oauthplayground (use scopes `openid email profile`). The token is short-lived (~1 hour)."
+					},
+					"response": []
+				},
+				{
+					"name": "Sign Out",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/user/signout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"signout"
+							]
+						},
+						"description": "Sign out current user by clearing the authentication cookie."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/user/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"profile"
+							]
+						},
+						"description": "Get current authenticated user's profile.\n\nRequires authentication cookie from sign in/sign up."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Username",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_name\": \"Jane Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/update-username",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"update-username"
+							]
+						},
+						"description": "Update the username of the currently authenticated user.\n\nRequires authentication (JWT cookie from sign in/sign up)"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Token Balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/user/check-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"check-token"
+							]
+						},
+						"description": "Check remaining token balance for authenticated user.\n\n**Token System:**\n- 1 character = 1 token\n- Tokens reset daily at midnight Thailand Time\n\n**Role-Based Limits:**\n- user-free: 4,000 tokens/day\n- user-pro: 10,000 tokens/day\n- admin: 50,000 tokens/day\n\n**Expected Response:**\n```json\n{\n  \"remaining_tokens\": 3750\n}\n```\n\n**Use Cases:**\n- Display quota in UI\n- Check before making grammar requests\n- Monitor usage patterns\n\nRequires authentication."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Token Tracking",
+			"item": [
+				{
+					"name": "Test Token Deduction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ข้อความสำหรับทดสอบการหักโทเคน (50 characters test)\",\n  \"mode\": \"normal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test token deduction with 50-character Thai text.\n\n**Before Request:**\n1. Check your token balance first (GET /api/user/check-token)\n2. Note the current balance (e.g., 4000 tokens)\n\n**After Request:**\n1. Check response metadata.tokenRemaining\n2. Should be: previous_balance - 50\n\n**Example Flow:**\n- Initial balance: 4000\n- Send 50-character text\n- New balance: 3950\n\n**Response includes:**\n```json\n{\n  \"issues\": [...],\n  \"metadata\": {\n    \"text_length\": 50,\n    \"tokenUsed\": 50,\n    \"tokenRemaining\": 3950\n  }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Insufficient Tokens (403)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"{{PASTE_VERY_LONG_TEXT_HERE}}\",\n  \"mode\": \"normal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test insufficient tokens error.\n\n**Setup:**\n1. Use grammar check multiple times to deplete tokens\n2. Or paste text longer than your remaining tokens\n\n**Expected Response (403 Forbidden):**\n```json\n{\n  \"code\": \"INSUFFICIENT_TOKENS\",\n  \"message\": \"Insufficient tokens. Please upgrade your plan.\",\n  \"remaining_tokens\": 150,\n  \"required_tokens\": 5000,\n  \"requestId\": \"abc123...\"\n}\n```\n\n**Frontend Action:**\n- Show upgrade prompt\n- Display how many more tokens needed\n- Link to upgrade page"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Daily Token Reset",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/user/check-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"check-token"
+							]
+						},
+						"description": "Verify daily token reset occurred.\n\n**Testing Daily Reset:**\n\nDay 1:\n1. Check tokens → 4000\n2. Use 1500 tokens → Balance: 2500\n3. End of day balance: 2500\n\nDay 2 (after midnight Thailand Time):\n1. Check tokens → Should be 4000 (reset!)\n2. Fresh daily quota available\n\n**Reset Schedule:**\n- Time: 00:00 (midnight)\n- Timezone: Asia/Bangkok (Thailand Time)\n- Frequency: Daily\n- Scope: All users by role\n\n**Role-Based Resets:**\n- user-free → 4,000\n- user-pro → 10,000\n- admin → 50,000\n\n**Check Server Logs:**\nLook for:\n```\n[CRON] Starting daily token reset job at 3/14/2026, 12:00:00 AM\n[CRON] Reset 1523 user-free users to 4000 tokens\n[CRON] Daily token reset completed. Total users reset: 1573\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Role-Based Limits",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// This test requires creating users with different roles",
+									"// See collection description for setup instructions"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/user/check-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"check-token"
+							]
+						},
+						"description": "Test role-based token limits.\n\n**Setup (requires database access):**\n\n1. **Create Free User:**\n```bash\ncurl -X POST http://localhost:5000/api/user/signup \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"user_name\":\"FreeUser\",\"user_email\":\"free@test.com\",\"user_password\":\"password123\"}'\n```\nExpected tokens: 4,000\n\n2. **Create Pro User (MongoDB):**\n```javascript\ndb.users.insertOne({\n  user_name: \"ProUser\",\n  user_email: \"pro@test.com\",\n  user_password: \"$2a$10$...\", // bcrypt hashed\n  user_role: \"user-pro\"\n  // remaining_tokens defaults to 10,000\n});\n```\nExpected tokens: 10,000\n\n3. **Create Admin User (MongoDB):**\n```javascript\ndb.users.insertOne({\n  user_name: \"AdminUser\",\n  user_email: \"admin@test.com\",\n  user_password: \"$2a$10$...\",\n  user_role: \"admin\"\n  // remaining_tokens defaults to 50,000\n});\n```\nExpected tokens: 50,000\n\n**Verification:**\n1. Sign in as each user\n2. Check token balance\n3. Verify correct allocation\n\n**Expected Results:**\n- Free: 4,000 tokens\n- Pro: 10,000 tokens (2.5x more)\n- Admin: 50,000 tokens (12.5x more)"
+					},
+					"response": []
+				},
+				{
+					"name": "Usage Tracking Test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse response",
+									"const response = pm.response.json();",
+									"",
+									"// Save initial balance",
+									"if (!pm.environment.get('initial_tokens')) {",
+									"    pm.environment.set('initial_tokens', response.metadata.tokenRemaining);",
+									"    console.log('Initial tokens:', response.metadata.tokenRemaining);",
+									"}",
+									"",
+									"// Track cumulative usage",
+									"const initialTokens = parseInt(pm.environment.get('initial_tokens'));",
+									"const currentTokens = response.metadata.tokenRemaining;",
+									"const totalUsed = initialTokens - currentTokens;",
+									"",
+									"console.log('Tokens used this session:', totalUsed);",
+									"console.log('Remaining tokens:', currentTokens);",
+									"",
+									"// Test assertions",
+									"pm.test('Has token metadata', () => {",
+									"    pm.expect(response.metadata).to.have.property('tokenUsed');",
+									"    pm.expect(response.metadata).to.have.property('tokenRemaining');",
+									"});",
+									"",
+									"pm.test('Token deduction is accurate', () => {",
+									"    const textLength = response.metadata.text_length;",
+									"    const tokenUsed = response.metadata.tokenUsed;",
+									"    pm.expect(tokenUsed).to.equal(textLength);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ทดสอบการติดตามการใช้งาน (This is a usage tracking test)\",\n  \"mode\": \"normal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test usage tracking with automatic token balance verification.\n\n**Features:**\n- Saves initial token balance\n- Tracks cumulative usage\n- Verifies accurate deduction\n- Displays remaining balance\n\n**How to Use:**\n1. Run this request multiple times\n2. Check console output for tracking\n3. Verify tokenRemaining decreases correctly\n\n**Test Script Output:**\n```\nInitial tokens: 4000\nTokens used this session: 250\nRemaining tokens: 3750\n```\n\n**Automatic Tests:**\n✓ Has token metadata\n✓ Token deduction is accurate\n\n**Reset Tracking:**\nTo reset, clear environment variable:\n```javascript\npm.environment.unset('initial_tokens');\n```"
+					},
+					"response": []
+				}
+			],
+			"description": "**Token Tracking System**\n\nTest the new token quota system for authenticated users.\n\n**System Overview:**\n- 1 character = 1 token\n- Tokens deducted after successful grammar check\n- Daily reset at midnight Thailand Time\n- Role-based quotas\n\n**Role Allocations:**\n- user-free: 4,000 tokens/day\n- user-pro: 10,000 tokens/day\n- admin: 50,000 tokens/day\n\n**Testing Workflow:**\n1. Sign up/Sign in\n2. Check initial token balance\n3. Use grammar check (tokens deducted)\n4. Check updated balance\n5. Test insufficient tokens error\n6. Verify daily reset (next day)\n\n**Related Endpoints:**\n- GET /api/user/check-token - Check balance\n- POST /api/grammar/check - Uses tokens\n\n**Documentation:**\n- See docs/claude_user_token_tracking.md\n- See docs/claude_token_role_and_reset.md"
+		},
+		{
+			"name": "Document Management",
+			"item": [
+				{
+					"name": "Create Document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"My First Document\",\n  \"content\": \"This is the content of my document. It can be up to 200,000 characters long.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/docs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"docs"
+							]
+						},
+						"description": "Create a new document for the authenticated user.\n\nOptional fields:\n- title (default: \"เอกสารไม่มีชื่อ\", max 80 chars)\n- content (default: \"\", max 200,000 chars)\n\nRequires authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Document (Defaults)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/docs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"docs"
+							]
+						},
+						"description": "Create a document with default values:\n- title: \"เอกสารไม่มีชื่อ\"\n- content: \"\""
+					},
+					"response": []
+				},
+				{
+					"name": "List Documents",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/docs?page=1&limit=20&sort=-updatedAt",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"docs"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page (default: 20)"
+								},
+								{
+									"key": "sort",
+									"value": "-updatedAt",
+									"description": "Sort field (default: -updatedAt for newest first)"
+								}
+							]
+						},
+						"description": "List all documents owned by the authenticated user.\n\nQuery parameters:\n- page: Page number (default: 1)\n- limit: Items per page (default: 20)\n- sort: Sort field (default: -updatedAt)\n\nReturns:\n- items: Array of documents with snippet (first 120 chars)\n- page, limit, total"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Document by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/docs/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"docs",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "DOCUMENT_ID_HERE",
+									"description": "Replace with actual document ID"
+								}
+							]
+						},
+						"description": "Get full document details by ID.\n\nReturns:\n- Full document with id, title, content, createdAt, updatedAt\n\nErrors:\n- 404: Document not found\n- 403: Not the owner (forbidden)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Document (Title)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Document Title\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/docs/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"docs",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "DOCUMENT_ID_HERE",
+									"description": "Replace with actual document ID"
+								}
+							]
+						},
+						"description": "Update only the title of a document.\n\nTitle cannot be empty string."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Document (Content)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Updated content goes here. This supports autosave functionality.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/docs/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"docs",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "DOCUMENT_ID_HERE",
+									"description": "Replace with actual document ID"
+								}
+							]
+						},
+						"description": "Update only the content of a document.\n\nSupports autosave - just send PATCH requests as user types."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Document (Both)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Completely Updated Title\",\n  \"content\": \"Completely updated content for this document.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/docs/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"docs",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "DOCUMENT_ID_HERE",
+									"description": "Replace with actual document ID"
+								}
+							]
+						},
+						"description": "Update both title and content at once.\n\nUpdates the updatedAt timestamp automatically."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Document",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/docs/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"docs",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "DOCUMENT_ID_HERE",
+									"description": "Replace with actual document ID"
+								}
+							]
+						},
+						"description": "Permanently delete a document (HARD delete).\n\nOnly the owner can delete their documents.\n\nErrors:\n- 404: Document not found\n- 403: Not the owner (forbidden)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Grammar Check",
+			"item": [
+				{
+					"name": "Check Thai Grammar - Normal Mode",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ผมชอบกินอาหารไท ผมคิดว่ามันอร่อยมาก\",\n  \"mode\": \"normal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Check Thai text with typos in NORMAL mode.\n\nExample text has:\n- 'อาหารไท' should be 'อาหารไทย'\n\n**Expected Response:**\n- 200 OK with issues array\n- Each issue has: span, replacement, reason\n- Metadata includes requestId for debugging"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Thai Grammar - Strict Mode",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"วันนี้อากาศดีมาก ผมจะไปเที่ยวทะเล\",\n  \"mode\": \"strict\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test STRICT mode - more rigorous grammar checking.\n\nStrict mode will check for:\n- Formal language usage\n- Complete sentence structure\n- Proper punctuation"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Thai Grammar - Casual Mode",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"อร่อยมากๆเลยยย ไปกินกันมั้ย\",\n  \"mode\": \"casual\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test CASUAL mode - more lenient with informal language.\n\nCasual mode is more tolerant of:\n- Repeated characters (มากๆ, เลยยย)\n- Informal expressions\n- Colloquial language"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Thai Grammar - Long Text",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"การเขียนภาษาไทยให้ถูกต้องเป็นสิ่งสำคัญ เราควรใส่ใจในการสะกดคำ การใช้วรรคตอน และไวยากรณ์ต่างๆ บางครั้งเราอาจพิมพ์ผิดโดยไม่ตั้งใจ เช่น พิมพ์คำว่า 'สวัสดี' เป็น 'สวัสดิ' หรือพิมพ์ 'ขอบคุณ' เป็น 'ขอบคุน' การตรวจสอบข้อความก่อนส่งจะช่วยให้การสื่อสารมีประสิทธิภาพมากขึ้น\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test with longer text (paragraph).\n\nDefault mode (normal) when mode is not specified.\n\nThis tests:\n- Handling of longer content\n- Multiple potential issues\n- Performance with larger text"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Grammar - Missing Text (400 Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mode\": \"normal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test validation error - missing required 'text' field.\n\n**Expected Response:**\n- 400 Bad Request\n- error: \"VALIDATION_ERROR\"\n- message: \"Text is required\""
+					},
+					"response": []
+				},
+				{
+					"name": "Check Grammar - Invalid Mode (400 Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ทดสอบข้อความ\",\n  \"mode\": \"super_strict\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test validation error - invalid mode.\n\n**Expected Response:**\n- 400 Bad Request\n- error: \"VALIDATION_ERROR\"\n- message: \"Invalid mode. Must be one of: strict, normal, casual\""
+					},
+					"response": []
+				},
+				{
+					"name": "Check Grammar - Text Too Long (400 Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"{{PASTE_VERY_LONG_TEXT_HERE_OVER_5000_CHARS}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test validation error - text exceeds maximum length.\n\n**Setup:**\n- Replace {{PASTE_VERY_LONG_TEXT_HERE_OVER_5000_CHARS}} with text > 5000 chars\n- Or adjust AI_MAX_TEXT_LENGTH in .env for testing\n\n**Expected Response:**\n- 400 Bad Request\n- error: \"VALIDATION_ERROR\"\n- message: \"Text exceeds maximum length of 5000 characters\""
+					},
+					"response": []
+				},
+				{
+					"name": "Check Grammar - No Auth (401 Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "",
+								"disabled": true,
+								"description": "Disabled to test without authentication"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ทดสอบโดยไม่มีการล็อกอิน\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test authentication error - no JWT token.\n\n**Note:** Make sure you're not logged in or clear cookies first.\n\n**Expected Response:**\n- 401 Unauthorized\n- message: \"No token provided\" or \"Invalid token\""
+					},
+					"response": []
+				},
+				{
+					"name": "Check Grammar - Rate Limit Test",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ทดสอบ rate limit\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grammar/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"grammar",
+								"check"
+							]
+						},
+						"description": "Test rate limiting (429 error after limit exceeded).\n\n**How to Test:**\n1. Run this request multiple times quickly (> 10 times in 1 minute by default)\n2. After limit is exceeded, you'll get 429 error\n\n**Expected Response after limit:**\n- 429 Too Many Requests\n- error: \"RATE_LIMITED\"\n- message: \"Too many requests. Please try again in X seconds\"\n- retryAfter: seconds to wait\n\n**Check Headers:**\n- X-RateLimit-Limit: 10\n- X-RateLimit-Remaining: (decreases with each request)\n- X-RateLimit-Reset: timestamp when limit resets"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tone Adjustment",
+			"item": [
+				{
+					"name": "Adjust Tone - Formal",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ผมอยากไปเที่ยวทะเลมากๆเลย ฝากซื้อกาแฟด้วยนะ\",\n  \"tone_type\": \"formal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tone/adjust",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tone",
+								"adjust"
+							]
+						},
+						"description": "Adjust Thai text to formal tone.\n\n**Input:** Casual/informal Thai text\n**Expected:** Polite, formal language suitable for official documents\n\n**Example transformation:**\n- \"ผมอยากไปเที่ยว\" → \"กระผมมีความประสงค์จะเดินทางไปพักผ่อน\"\n\n**Supports:**\n- Guest users (limited tokens)\n- Authenticated users (role-based token limits)\n- Rate limiting same as grammar check"
+					},
+					"response": []
+				},
+				{
+					"name": "Adjust Tone - Casual",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ข้าพเจ้ามีความประสงค์จะสอบถามข้อมูลเพิ่มเติมเกี่ยวกับบริการของท่าน\",\n  \"tone_type\": \"casual\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tone/adjust",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tone",
+								"adjust"
+							]
+						},
+						"description": "Adjust Thai text to casual/friendly tone.\n\n**Input:** Formal Thai text\n**Expected:** Friendly, conversational language like chatting with friends\n\n**Example transformation:**\n- \"ข้าพเจ้ามีความประสงค์\" → \"อยากจะถาม\"\n\n**Valid tone_type values:**\n- \"formal\" - ทางการ\n- \"casual\" - เป็นกันเอง"
+					},
+					"response": []
+				},
+				{
+					"name": "Adjust Tone - With Page Breaks",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"สวัสดีครับ ผมชื่อสมชาย[---PAGE_BREAK---]ผมอยากไปเที่ยวทะเล[---PAGE_BREAK---]ขอบคุณมากครับ\",\n  \"tone_type\": \"casual\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tone/adjust",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tone",
+								"adjust"
+							]
+						},
+						"description": "Test tone adjustment with [---PAGE_BREAK---] markers.\n\n**Critical Test:** Verifies that page break markers are preserved intact.\n\n**How it works:**\n1. Text is split by [---PAGE_BREAK---] into separate pages\n2. Each page is sent to AI independently\n3. AI never sees the marker\n4. Pages are reassembled with markers in original positions\n\n**Expected:** adjusted_text should contain exactly 2 [---PAGE_BREAK---] markers\n\n**Metadata includes:**\n- pages_processed: 3 (the text has 3 pages)"
+					},
+					"response": []
+				},
+				{
+					"name": "Adjust Tone - Invalid tone_type (400 Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"ทดสอบข้อความ\",\n  \"tone_type\": \"academic\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tone/adjust",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tone",
+								"adjust"
+							]
+						},
+						"description": "Test validation error - invalid tone_type.\n\n**Expected Response:**\n- 400 Bad Request\n- code: \"VALIDATION_ERROR\"\n- message: \"tone_type is required and must be one of: formal, casual\"\n\n**Valid values:** formal, casual"
+					},
+					"response": []
+				},
+				{
+					"name": "Adjust Tone - Missing Text (400 Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tone_type\": \"formal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tone/adjust",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tone",
+								"adjust"
+							]
+						},
+						"description": "Test validation error - missing required 'text' field.\n\n**Expected Response:**\n- 400 Bad Request\n- code: \"VALIDATION_ERROR\"\n- message: \"Text is required\""
+					},
+					"response": []
+				}
+			],
+			"description": "**Tone Adjustment (ปรับโทนภาษา)**\n\nAdjust Thai text between formal and casual tones using AI.\n\n**Endpoint:** POST /api/tone/adjust\n\n**Request Body:**\n- text (string, required): Thai text to adjust\n- tone_type (string, required): \"formal\" or \"casual\"\n\n**Features:**\n- Preserves [---PAGE_BREAK---] markers safely\n- Supports guest and authenticated users\n- Role-based token limits (same as grammar)\n- Rate limiting (same as grammar)\n\n**Response:**\n```json\n{\n  \"adjusted_text\": \"...\",\n  \"metadata\": {\n    \"original_length\": 50,\n    \"adjusted_length\": 75,\n    \"tone_type\": \"formal\",\n    \"pages_processed\": 2,\n    \"tokenUsed\": 50,\n    \"tokenRemaining\": 3950\n  }\n}\n```"
+		},
+		{
+			"name": "Admin Dashboard",
+			"item": [
+				{
+					"name": "Overview (5 cards)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/overview",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "overview"]
+						},
+						"description": "Admin only. Returns 5 cards:\n- total_users\n- active_users (last 7 days)\n- pro_users\n- ai_calls_today\n- banned_users\n\n**Auth:** verifyToken + isAdmin"
+					},
+					"response": []
+				},
+				{
+					"name": "List Users (paginated)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/users?page=1&limit=20&search=&role=&banned=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "users"],
+							"query": [
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "20" },
+								{ "key": "search", "value": "", "description": "search by name or email" },
+								{ "key": "role", "value": "", "description": "user-free | user-pro | admin" },
+								{ "key": "banned", "value": "", "description": "true | false" }
+							]
+						},
+						"description": "Admin only. Paginated user list (excludes soft-deleted).\n\n**Query params:**\n- page (default 1)\n- limit (default 20, max 100)\n- search (name/email regex)\n- role (filter by role)\n- banned (true/false)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/users/{{user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "users", "{{user_id}}"]
+						},
+						"description": "Admin only. Returns user object + stats (total_ai_calls, total_payments) + recent_activity (last 10)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User (role / ban)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_role\": \"user-pro\",\n  \"is_banned\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/users/{{user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "users", "{{user_id}}"]
+						},
+						"description": "Admin only. Update role and/or ban status.\n\n**Body (any combo):**\n- user_role: \"user-free\" | \"user-pro\" | \"admin\"\n- is_banned: boolean\n\nLogs `user_banned` activity if banned = true."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User (soft)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/users/{{user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "users", "{{user_id}}"]
+						},
+						"description": "Admin only. Soft delete (sets is_deleted + is_banned = true).\n\nCannot delete own account. Logs `user_deleted` activity."
+					},
+					"response": []
+				},
+				{
+					"name": "Reset User Tokens",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/users/{{user_id}}/reset-tokens",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "users", "{{user_id}}", "reset-tokens"]
+						},
+						"description": "Admin only. Reset user's `remaining_tokens` to role limit (free=4000, pro=10000, admin=50000)."
+					},
+					"response": []
+				},
+				{
+					"name": "Chart - User Growth",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/charts/user-growth?days=30",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "charts", "user-growth"],
+							"query": [
+								{ "key": "days", "value": "30", "description": "1-90 (default 30)" }
+							]
+						},
+						"description": "Admin only. New users per day. Returns `data: [{date, value}]` with all dates filled (zero for missing)."
+					},
+					"response": []
+				},
+				{
+					"name": "Chart - AI Usage",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/charts/ai-usage?days=7",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "charts", "ai-usage"],
+							"query": [
+								{ "key": "days", "value": "7", "description": "1-90 (default 7)" }
+							]
+						},
+						"description": "Admin only. AI calls per day, split into two series:\n- grammar_check\n- tone_adjust"
+					},
+					"response": []
+				},
+				{
+					"name": "Chart - Conversion Rate",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/charts/conversion-rate?days=30",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "charts", "conversion-rate"],
+							"query": [
+								{ "key": "days", "value": "30", "description": "1-90 (default 30)" }
+							]
+						},
+						"description": "Admin only. Free→Pro upgrades per day + overall snapshot (total_users, pro_users, conversion_rate %)."
+					},
+					"response": []
+				},
+				{
+					"name": "Activity Feed",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/admin/activity?limit=20",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "admin", "activity"],
+							"query": [
+								{ "key": "limit", "value": "20", "description": "1-100 (default 20)" }
+							]
+						},
+						"description": "Admin only. Recent activity log feed.\n\n**Activity types:**\n- user_signup\n- user_upgraded_pro\n- payment_received\n- token_limit_hit\n- user_banned\n- user_deleted"
+					},
+					"response": []
+				}
+			],
+			"description": "**Admin Dashboard API**\n\nAll endpoints require:\n- `verifyToken` (valid JWT)\n- `isAdmin` (user_role = \"admin\")\n\nMounted at `/api/dashboard/admin`.\n\n**Setup:**\n1. Sign in as admin user\n2. Copy the JWT token from response\n3. Set Postman variable `admin_token` to that token\n4. Set `user_id` variable to a target user's _id for user-specific endpoints"
+		},
+		{
+			"name": "User Dashboard",
+			"item": [
+				{
+					"name": "Get User Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard/user/stats",
+							"host": ["{{base_url}}"],
+							"path": ["api", "dashboard", "user", "stats"]
+						},
+						"description": "Returns everything the user dashboard page needs:\n\n**Cards:**\n- total_checks (all-time)\n- total_corrections (all-time issues found)\n- quota.used / quota.limit / quota.percent_used\n- quota.user_role (account type)\n\n**Token Quota section:**\n- quota.limits_by_role (table data)\n- quota.percent_used (donut)\n\n**Usage chart:**\n- last_7_days: [{date, value}] (7 entries, gaps filled)\n- summary_7_days: {total, avg_per_day, max_per_day}\n\n**Bonus:**\n- breakdown.grammar_checks vs breakdown.tone_adjusts\n\n**Auth:** verifyToken (any authenticated user sees their own stats)"
+					},
+					"response": []
+				}
+			],
+			"description": "**User Dashboard API**\n\nEndpoints for the logged-in user's own dashboard/profile page.\n\nAll endpoints require `verifyToken`. User sees only their own data — no admin role needed."
+		},
+		{
+			"name": "Subscription",
+			"item": [
+				{
+					"name": "Get Subscription Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/api/subscription/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "subscription", "status"]
+						},
+						"description": "Get current user's subscription status (role, expiry, days remaining)."
+					},
+					"response": []
+				},
+				{
+					"name": "Grant Pro (admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"days\": 30\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/subscription/grant-pro",
+							"host": ["{{base_url}}"],
+							"path": ["api", "subscription", "grant-pro"]
+						},
+						"description": "Admin only. Manually grant Pro access for N days (extends existing expiry if active). Logs `user_upgraded_pro` activity."
+					},
+					"response": []
+				}
+			],
+			"description": "Subscription / Pro access management."
+		},
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				},
+				"description": "Simple health check endpoint. Returns API status message."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string",
+			"description": "JWT token from admin sign-in. Required for /api/dashboard/admin/* and /api/subscription/grant-pro"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string",
+			"description": "JWT token for regular authenticated user requests"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string",
+			"description": "Target user _id for admin user-management endpoints"
+		}
+	]
+}
